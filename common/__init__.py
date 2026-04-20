@@ -1,1 +1,3 @@
-from domain.ticker import Ticker
+from common.domain.ticker import Ticker
+
+__all__ = ["Ticker"]

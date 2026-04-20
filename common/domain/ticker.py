@@ -35,5 +35,3 @@ class Ticker(BaseModel):
             return None
         return v
 
-    class Config:
-        populate_by_name = True

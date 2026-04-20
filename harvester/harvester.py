@@ -1,100 +1,112 @@
-import json
-import math
-from pathlib import Path
+"""Harvester service entry point.
+
+Consumes requests from `oraculum.harvester.request` and dispatches them
+to typed handlers. One process handles commands sequentially; scale
+horizontally by deploying more replicas in the same Kafka consumer
+group (Kafka partitioning provides parallelism).
+"""
+from __future__ import annotations
+
+import logging
+from typing import Optional
 
 import pandas as pd
-from kafka import KafkaProducer
+from pydantic import ValidationError
 
-from common import Ticker
+from common.commands import Command, parse_command
 from common.config import config
-import simfin as sf
+from common.messaging import KafkaConsumerProvider
+from harvester.dispatcher import CommandDispatcher
+from harvester.handlers import (
+    RatioCommandHandler,
+    StatementCommandHandler,
+    TickerCommandHandler,
+)
+from harvester.providers import ProviderRegistry
 
-original_read_csv = pd.read_csv
+logger = logging.getLogger(__name__)
 
-
-def patched_read_csv(*args, **kwargs):
-    if 'date_parser' in kwargs:
-        # In Pandas 2.0+, date_parser is replaced by date_format or ignored
-        # because the new parser is much smarter.
-        kwargs.pop('date_parser')
-    return original_read_csv(*args, **kwargs)
-
-
-pd.read_csv = patched_read_csv
+_original_read_csv = pd.read_csv
 
 
-class TickerHarvester:
-    def __init__(self):
-        # Initialize SimFin
-        sf.set_api_key(config.simfin_api_key)
-        cache_path = Path("./data/simfin_cache")
-        cache_path.mkdir(parents=True, exist_ok=True)
-        sf.set_data_dir(str(cache_path))
+def _patched_read_csv(*args, **kwargs):
+    # Pandas 2.0+ removed `date_parser`; keep legacy SimFin calls working.
+    kwargs.pop("date_parser", None)
+    return _original_read_csv(*args, **kwargs)
 
-        # Initialize Producer (Sync for Harvester)
-        self.producer = KafkaProducer(
-            bootstrap_servers=config.redpanda_brokers,
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
-        )
-        self.topic = config.ticker_topic
+
+pd.read_csv = _patched_read_csv
+
+
+class HarvesterService:
+    """Consumes harvester requests and dispatches them."""
+
+    def __init__(
+        self,
+        dispatcher: CommandDispatcher,
+        topic: Optional[str] = None,
+    ) -> None:
+        self._dispatcher = dispatcher
+        self._topic = topic or config.harvester_request_topic
+
+    def run(self) -> None:
+        consumer = KafkaConsumerProvider.get(self._topic)
+        logger.info("Listening on %s", self._topic)
+        for message in consumer:
+            self._process(message)
+            consumer.commit()
+
+    def _process(self, message) -> None:
+        command = self._safe_parse(message)
+        if command is None:
+            return
+        self._safe_dispatch(command)
 
     @staticmethod
-    def get_industry_map():
-        """Fetches industry names to enrich the ticker data."""
-        print("Loading industry metadata...")
-        df_ind = sf.load_industries()
-        return df_ind.to_dict(orient='index')
+    def _safe_parse(message) -> Optional[Command]:
+        try:
+            return parse_command(message.value)
+        except ValidationError as exc:
+            logger.error(
+                "Invalid command at offset=%s: %s", message.offset, exc
+            )
+        except Exception:  # noqa: BLE001 - supervisor boundary
+            logger.exception(
+                "Unexpected parse error at offset=%s", message.offset
+            )
+        return None
 
-    def run(self):
-        # 1. Prepare Enrichment Data
-        industry_map = self.get_industry_map()
+    def _safe_dispatch(self, command: Command) -> None:
+        try:
+            self._dispatcher.dispatch(command)
+        except Exception:  # noqa: BLE001 - supervisor boundary; log & commit
+            logger.exception(
+                "Handler failed for command_type=%s cid=%s",
+                command.command_type,
+                command.correlation_id,
+            )
 
-        # 2. Fetch US Companies
-        print("Fetching US tickers from SimFin...")
-        df = sf.load_companies(market='us').reset_index()
 
-        # 3. Process each row
-        success = 0
-        for _, row in df.iterrows():
-            try:
-                # 1. Start with the raw SimFin dictionary
-                raw_simfin_dict = row.to_dict()
+def build_default_service() -> HarvesterService:
+    """Composition root: wire registry, handlers, dispatcher, and service."""
+    providers = ProviderRegistry()
+    dispatcher = CommandDispatcher(
+        [
+            TickerCommandHandler(providers),
+            StatementCommandHandler(providers),
+            RatioCommandHandler(providers),
+        ]
+    )
+    return HarvesterService(dispatcher)
 
-                # 2. Add the provider name manually
-                raw_simfin_dict['provider_name'] = 'simfin'
 
-                # 3. Handle Enrichment (still using SimFin names for logic)
-                raw_id = raw_simfin_dict.get("IndustryId")
-                if raw_id is not None and not (isinstance(raw_id, float) and math.isnan(raw_id)):
-                    idx = int(float(raw_id))
-                    if idx in industry_map:
-                        # We map these to our INTERNAL names directly
-                        raw_simfin_dict['industry_name'] = industry_map[idx].get('Industry')
-                        raw_simfin_dict['sector_name'] = industry_map[idx].get('Sector')
-
-                # 4. VALIDATE: This consumes SimFin names (via Aliases)
-                ticker_obj = Ticker.model_validate(raw_simfin_dict)
-
-                # 5. CONVERT: This is the magic part!
-                # by_alias=False tells Pydantic to use your Python field names (symbol, company_name)
-                # instead of the aliases (Ticker, Company Name).
-                standardized_dict = ticker_obj.model_dump(by_alias=False)
-
-                # 6. Publish the standardized version to Redpanda
-                self.producer.send(
-                    self.topic,
-                    key=ticker_obj.symbol.encode('utf-8'),
-                    value=standardized_dict
-                )
-                success += 1
-
-            except Exception as e:
-                print(f"Error translating {row.get('Ticker', 'Unknown')}: {e}")
-
-        self.producer.flush()
-        print(f"Success: Published {success} standardized tickers.")
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
+    build_default_service().run()
 
 
 if __name__ == "__main__":
-    harvester = TickerHarvester()
-    harvester.run()
+    main()
