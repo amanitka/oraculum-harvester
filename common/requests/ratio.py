@@ -1,4 +1,4 @@
-"""`fetch_ratio` command schema (skeleton).
+"""`fetch_ratio` request schema (skeleton).
 
 Covers pre-calculated financial metrics (ROE, P/E, Debt-to-Equity, ...).
 SimFin source method: `sf.load_derived`.
@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from common.commands.base import Command
+from common.requests.base import Request
 
 
-class FetchRatioCommand(Command):
+class FetchRatioRequest(Request):
     """TODO: symbols, period."""
 
-    command_type: Literal["fetch_ratio"] = "fetch_ratio"
+    request_type: Literal["fetch_ratio"] = "fetch_ratio"

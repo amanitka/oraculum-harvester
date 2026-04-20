@@ -1,7 +1,7 @@
 """Harvester service entry point.
 
 Consumes requests from `oraculum.harvester.request` and dispatches them
-to typed handlers. One process handles commands sequentially; scale
+to typed handlers. One process handles requests sequentially; scale
 horizontally by deploying more replicas in the same Kafka consumer
 group (Kafka partitioning provides parallelism).
 """
@@ -13,16 +13,16 @@ from typing import Optional
 import pandas as pd
 from pydantic import ValidationError
 
-from common.commands import Command, parse_command
 from common.config import config
 from common.messaging import KafkaConsumerProvider
-from harvester.dispatcher import CommandDispatcher
+from common.requests import Request, parse_request
+from harvester.dispatcher import RequestDispatcher
 from harvester.handlers import (
-    RatioCommandHandler,
-    StatementCommandHandler,
-    TickerCommandHandler,
+    RatioRequestHandler,
+    StatementRequestHandler,
+    TickerRequestHandler,
 )
-from harvester.providers import ProviderRegistry
+from harvester.providers import SimFinProvider
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class HarvesterService:
 
     def __init__(
         self,
-        dispatcher: CommandDispatcher,
+        dispatcher: RequestDispatcher,
         topic: Optional[str] = None,
     ) -> None:
         self._dispatcher = dispatcher
@@ -57,18 +57,18 @@ class HarvesterService:
             consumer.commit()
 
     def _process(self, message) -> None:
-        command = self._safe_parse(message)
-        if command is None:
+        request = self._safe_parse(message)
+        if request is None:
             return
-        self._safe_dispatch(command)
+        self._safe_dispatch(request)
 
     @staticmethod
-    def _safe_parse(message) -> Optional[Command]:
+    def _safe_parse(message) -> Optional[Request]:
         try:
-            return parse_command(message.value)
+            return parse_request(message.value)
         except ValidationError as exc:
             logger.error(
-                "Invalid command at offset=%s: %s", message.offset, exc
+                "Invalid request at offset=%s: %s", message.offset, exc
             )
         except Exception:  # noqa: BLE001 - supervisor boundary
             logger.exception(
@@ -76,25 +76,25 @@ class HarvesterService:
             )
         return None
 
-    def _safe_dispatch(self, command: Command) -> None:
+    def _safe_dispatch(self, request: Request) -> None:
         try:
-            self._dispatcher.dispatch(command)
+            self._dispatcher.dispatch(request)
         except Exception:  # noqa: BLE001 - supervisor boundary; log & commit
             logger.exception(
-                "Handler failed for command_type=%s cid=%s",
-                command.command_type,
-                command.correlation_id,
+                "Handler failed for request_type=%s cid=%s",
+                request.request_type,
+                request.correlation_id,
             )
 
 
 def build_default_service() -> HarvesterService:
-    """Composition root: wire registry, handlers, dispatcher, and service."""
-    providers = ProviderRegistry()
-    dispatcher = CommandDispatcher(
+    """Composition root: wire provider, handlers, dispatcher, and service."""
+    provider = SimFinProvider()
+    dispatcher = RequestDispatcher(
         [
-            TickerCommandHandler(providers),
-            StatementCommandHandler(providers),
-            RatioCommandHandler(providers),
+            TickerRequestHandler(provider),
+            StatementRequestHandler(),
+            RatioRequestHandler(),
         ]
     )
     return HarvesterService(dispatcher)

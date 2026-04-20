@@ -1,6 +1,6 @@
 """Financial statement domain model (skeleton).
 
-Populated when `FetchStatementCommand` is implemented. Source data comes
+Populated when `FetchStatementRequest` is implemented. Source data comes
 from SimFin `load_income`, `load_balance`, `load_cashflow`.
 """
 from __future__ import annotations

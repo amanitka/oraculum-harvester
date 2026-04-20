@@ -1,22 +1,18 @@
-"""Handler for `FetchRatioCommand` (skeleton)."""
+"""Handler for `FetchRatioRequest` (skeleton)."""
 from __future__ import annotations
 
 from typing import Type
 
-from common.commands import Command, FetchRatioCommand
-from harvester.handlers.base import CommandHandler
-from harvester.providers import ProviderRegistry
+from common.requests import FetchRatioRequest, Request
+from harvester.handlers.base import RequestHandler
 
 
-class RatioCommandHandler(CommandHandler):
+class RatioRequestHandler(RequestHandler):
     """TODO: iterate SimFin derived ratios and publish to ratio topic."""
 
-    def __init__(self, providers: ProviderRegistry) -> None:
-        self._providers = providers
-
     @property
-    def handles(self) -> Type[Command]:
-        return FetchRatioCommand
+    def handles(self) -> Type[Request]:
+        return FetchRatioRequest
 
-    def handle(self, command: Command) -> None:
-        raise NotImplementedError("FetchRatioCommand handler pending")
+    def handle(self, request: Request) -> None:
+        raise NotImplementedError("FetchRatioRequest handler pending")

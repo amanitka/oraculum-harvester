@@ -1,24 +1,24 @@
-"""Base class for command handlers."""
+"""Base class for request handlers."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Type
 
-from common.commands import Command
+from common.requests import Request
 
 
-class CommandHandler(ABC):
-    """Processes exactly one command type.
+class RequestHandler(ABC):
+    """Processes exactly one request type.
 
     The dispatcher keys handlers by the `handles` property, so each
-    subclass must advertise the concrete command subclass it accepts.
+    subclass must advertise the concrete request subclass it accepts.
     """
 
     @property
     @abstractmethod
-    def handles(self) -> Type[Command]:
-        """Concrete command subclass this handler accepts."""
+    def handles(self) -> Type[Request]:
+        """Concrete request subclass this handler accepts."""
 
     @abstractmethod
-    def handle(self, command: Command) -> None:
-        """Execute the work described by `command`."""
+    def handle(self, request: Request) -> None:
+        """Execute the work described by `request`."""

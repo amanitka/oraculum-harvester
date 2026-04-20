@@ -1,11 +1,11 @@
-from harvester.handlers.base import CommandHandler
-from harvester.handlers.ratio import RatioCommandHandler
-from harvester.handlers.statement import StatementCommandHandler
-from harvester.handlers.ticker import TickerCommandHandler
+from harvester.handlers.base import RequestHandler
+from harvester.handlers.ratio import RatioRequestHandler
+from harvester.handlers.statement import StatementRequestHandler
+from harvester.handlers.ticker import TickerRequestHandler
 
 __all__ = [
-    "CommandHandler",
-    "RatioCommandHandler",
-    "StatementCommandHandler",
-    "TickerCommandHandler",
+    "RatioRequestHandler",
+    "RequestHandler",
+    "StatementRequestHandler",
+    "TickerRequestHandler",
 ]

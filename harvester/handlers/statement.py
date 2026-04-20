@@ -1,22 +1,18 @@
-"""Handler for `FetchStatementCommand` (skeleton)."""
+"""Handler for `FetchStatementRequest` (skeleton)."""
 from __future__ import annotations
 
 from typing import Type
 
-from common.commands import Command, FetchStatementCommand
-from harvester.handlers.base import CommandHandler
-from harvester.providers import ProviderRegistry
+from common.requests import FetchStatementRequest, Request
+from harvester.handlers.base import RequestHandler
 
 
-class StatementCommandHandler(CommandHandler):
+class StatementRequestHandler(RequestHandler):
     """TODO: iterate SimFin income/balance/cashflow and publish statements."""
 
-    def __init__(self, providers: ProviderRegistry) -> None:
-        self._providers = providers
-
     @property
-    def handles(self) -> Type[Command]:
-        return FetchStatementCommand
+    def handles(self) -> Type[Request]:
+        return FetchStatementRequest
 
-    def handle(self, command: Command) -> None:
-        raise NotImplementedError("FetchStatementCommand handler pending")
+    def handle(self, request: Request) -> None:
+        raise NotImplementedError("FetchStatementRequest handler pending")

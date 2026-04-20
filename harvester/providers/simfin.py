@@ -1,4 +1,4 @@
-"""SimFin implementation of harvester capability protocols."""
+"""SimFin data provider."""
 from __future__ import annotations
 
 import logging
@@ -15,20 +15,19 @@ from common.config import config
 logger = logging.getLogger(__name__)
 
 _DEFAULT_CACHE_DIR = Path("./data/simfin_cache")
+_PROVIDER_NAME = "simfin"
 
 
 class SimFinProvider:
-    """Fetches data from SimFin. Implements `SupportsTickers` today."""
+    """Fetches data from SimFin.
 
-    NAME = "simfin"
+    Currently exposes `fetch_tickers`; future methods will add
+    statements and derived ratios.
+    """
 
     def __init__(self, cache_dir: Path = _DEFAULT_CACHE_DIR) -> None:
         self._configure_sdk(cache_dir)
         self._industry_map: Dict[int, Dict[str, Any]] = {}
-
-    @property
-    def name(self) -> str:
-        return self.NAME
 
     def fetch_tickers(self, market: str = "us") -> Iterator[Ticker]:
         """Yield validated `Ticker` records for the given market."""
@@ -65,7 +64,7 @@ class SimFinProvider:
 
     def _build_raw_payload(self, row: pd.Series) -> Dict[str, Any]:
         raw: Dict[str, Any] = row.to_dict()
-        raw["provider_name"] = self.NAME
+        raw["provider_name"] = _PROVIDER_NAME
         self._enrich_with_industry(raw)
         return raw
 
