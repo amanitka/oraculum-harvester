@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-import pandas as pd
 from pydantic import ValidationError
 
 from common.config import config
@@ -25,17 +24,6 @@ from harvester.handlers import (
 from harvester.providers import SimFinProvider
 
 logger = logging.getLogger(__name__)
-
-_original_read_csv = pd.read_csv
-
-
-def _patched_read_csv(*args, **kwargs):
-    # Pandas 2.0+ removed `date_parser`; keep legacy SimFin calls working.
-    kwargs.pop("date_parser", None)
-    return _original_read_csv(*args, **kwargs)
-
-
-pd.read_csv = _patched_read_csv
 
 
 class HarvesterService:

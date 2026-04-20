@@ -17,6 +17,27 @@ logger = logging.getLogger(__name__)
 _DEFAULT_CACHE_DIR = Path("./data/simfin_cache")
 _PROVIDER_NAME = "simfin"
 
+_pandas_patched = False
+
+
+def _patch_pandas_for_simfin() -> None:
+    """Pandas 2.0+ removed `date_parser`; keep legacy SimFin calls working.
+
+    Idempotent: subsequent calls are no-ops so multiple `SimFinProvider`
+    instances don't wrap the read_csv chain recursively.
+    """
+    global _pandas_patched
+    if _pandas_patched:
+        return
+    original_read_csv = pd.read_csv
+
+    def _patched(*args, **kwargs):
+        kwargs.pop("date_parser", None)
+        return original_read_csv(*args, **kwargs)
+
+    pd.read_csv = _patched
+    _pandas_patched = True
+
 
 class SimFinProvider:
     """Fetches data from SimFin.
@@ -40,6 +61,7 @@ class SimFinProvider:
 
     @staticmethod
     def _configure_sdk(cache_dir: Path) -> None:
+        _patch_pandas_for_simfin()
         sf.set_api_key(config.simfin_api_key)
         cache_dir.mkdir(parents=True, exist_ok=True)
         sf.set_data_dir(str(cache_dir))
