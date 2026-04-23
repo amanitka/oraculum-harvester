@@ -1,14 +1,14 @@
 simFin:
-    apiKey: $SIMFIN_API_KEY
+  apiKey: $SIMFIN_API_KEY
 
-redpanda:
-    brokers: $REDPANDA_BROKERS|localhost:9092
+kafka:
+  brokers: $REDPANDA_BROKERS|localhost:9092
+  topics:
+    ticker: oraculum.ticker
+    incomeStatement: oraculum.income_statement
+    balanceSheet: oraculum.balance_sheet
+    ratio: oraculum.ratio
 
 harvester:
-    consumerGroup: oraculum-harvester
-    requestTopic: oraculum.harvester.request
-
-topics:
-    ticker: oraculum.ticker
-    statement: oraculum.statement
-    ratio: oraculum.ratio
+  consumerGroup: oraculum-harvester
+  requestTopic: oraculum.harvester.request

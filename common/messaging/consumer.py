@@ -25,7 +25,7 @@ class KafkaConsumerProvider:
     _atexit_registered: bool = False
 
     @classmethod
-    def get(cls, *topics: str, group_id: Optional[str] = None) -> KafkaConsumer:
+    def get(cls, *topics: str, group_id: Optional[str] = None) -> KafkaConsumer | None:
         """Return the shared consumer, building it on first call.
 
         Topics and group_id are read on creation; subsequent calls ignore
@@ -54,9 +54,13 @@ class KafkaConsumerProvider:
 
     @staticmethod
     def _build(topics: Tuple[str, ...], group_id: str) -> KafkaConsumer:
+        """
+
+        :rtype: KafkaConsumer
+        """
         return KafkaConsumer(
             *topics,
-            bootstrap_servers=config.redpanda_brokers,
+            bootstrap_servers=config.kafka_brokers,
             group_id=group_id,
             enable_auto_commit=False,
             auto_offset_reset="earliest",

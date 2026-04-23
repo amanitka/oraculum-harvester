@@ -7,11 +7,17 @@ from pydantic import Field, TypeAdapter, ValidationError
 
 from common.requests.base import Request
 from common.requests.ratio import FetchRatioRequest
-from common.requests.statement import FetchStatementRequest
+from common.requests.income_statement import FetchIncomeStatementRequest
+from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.ticker import FetchTickerRequest
 
 AnyRequest = Annotated[
-    Union[FetchTickerRequest, FetchStatementRequest, FetchRatioRequest],
+    Union[
+        FetchTickerRequest,
+        FetchIncomeStatementRequest,
+        FetchBalanceSheetRequest,
+        FetchRatioRequest,
+    ],
     Field(discriminator="request_type"),
 ]
 
@@ -31,8 +37,9 @@ def parse_request(payload: bytes | str | dict) -> Request:
 
 __all__ = [
     "AnyRequest",
+    "FetchBalanceSheetRequest",
     "FetchRatioRequest",
-    "FetchStatementRequest",
+    "FetchIncomeStatementRequest",
     "FetchTickerRequest",
     "Request",
     "ValidationError",

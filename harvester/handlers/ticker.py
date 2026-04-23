@@ -25,7 +25,7 @@ class TickerRequestHandler(RequestHandler):
         return FetchTickerRequest
 
     def handle(self, request: Request) -> None:
-        assert isinstance(request, FetchTickerRequest)  # noqa: S101
+        assert isinstance(request, FetchTickerRequest)
         count = self._publish(self._provider.fetch_tickers(market=request.market))
         logger.info(
             "Published %d tickers [cid=%s market=%s]",
@@ -34,7 +34,8 @@ class TickerRequestHandler(RequestHandler):
             request.market,
         )
 
-    def _publish(self, tickers: Iterable[Ticker]) -> int:
+    @staticmethod
+    def _publish(tickers: Iterable[Ticker]) -> int:
         producer = KafkaProducerProvider.get()
         topic = config.topics.ticker
         count = 0

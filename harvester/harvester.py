@@ -17,8 +17,9 @@ from common.messaging import KafkaConsumerProvider
 from common.requests import Request, parse_request
 from harvester.dispatcher import RequestDispatcher
 from harvester.handlers import (
+    BalanceSheetRequestHandler,
     RatioRequestHandler,
-    StatementRequestHandler,
+    IncomeStatementRequestHandler,
     TickerRequestHandler,
 )
 from harvester.providers import SimFinProvider
@@ -81,7 +82,8 @@ def build_default_service() -> HarvesterService:
     dispatcher = RequestDispatcher(
         [
             TickerRequestHandler(provider),
-            StatementRequestHandler(),
+            IncomeStatementRequestHandler(provider),
+            BalanceSheetRequestHandler(provider),
             RatioRequestHandler(),
         ]
     )

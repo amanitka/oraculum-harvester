@@ -43,7 +43,7 @@ class KafkaProducerProvider:
 
     _instance: Optional[KafkaProducer] = None
     _lock: threading.Lock = threading.Lock()
-    _atexit_registered: bool = False
+    _at_exit_registered: bool = False
 
     @classmethod
     def get(cls) -> KafkaProducer:
@@ -66,7 +66,7 @@ class KafkaProducerProvider:
     @staticmethod
     def _build() -> KafkaProducer:
         return KafkaProducer(
-            bootstrap_servers=config.redpanda_brokers,
+            bootstrap_servers=config.kafka_brokers,
             value_serializer=_serialize_value,
             key_serializer=_serialize_key,
             acks="all",
@@ -75,10 +75,10 @@ class KafkaProducerProvider:
 
     @classmethod
     def _register_shutdown_hook(cls) -> None:
-        if cls._atexit_registered:
+        if cls._at_exit_registered:
             return
         atexit.register(cls.reset)
-        cls._atexit_registered = True
+        cls._at_exit_registered = True
 
     @staticmethod
     def _safe_close(producer: KafkaProducer) -> None:

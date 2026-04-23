@@ -11,13 +11,14 @@ _ROOT_DIR = _CURRENT_DIR.parent
 CONFIG_PATH = _ROOT_DIR / "config.yaml"
 
 
-class _TopicsConfig:
+class _KafkaTopicsConfig:
     """Canonical output topic names."""
 
     def __init__(self, source: EnvYAML) -> None:
-        self.ticker: str = source.get("topics.ticker")
-        self.statement: str = source.get("topics.statement")
-        self.ratio: str = source.get("topics.ratio")
+        self.ticker: str = source.get("kafka.topics.ticker")
+        self.income_statement: str = source.get("kafka.topics.incomeStatement")
+        self.balance_sheet: str = source.get("kafka.topics.balanceSheet")
+        self.ratio: str = source.get("kafka.topics.ratio")
 
 
 class Config:
@@ -27,12 +28,12 @@ class Config:
         source: EnvYAML = EnvYAML(CONFIG_PATH)
         self._source = source
         self.simfin_api_key: str = source.get("simFin.apiKey")
-        self.redpanda_brokers: List[str] = self._parse_brokers(
-            source.get("redpanda.brokers")
+        self.kafka_brokers: List[str] = self._parse_brokers(
+            source.get("kafka.brokers")
         )
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
-        self.topics: _TopicsConfig = _TopicsConfig(source)
+        self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
 
     @staticmethod
     def _parse_brokers(value: str | list | None) -> List[str]:
