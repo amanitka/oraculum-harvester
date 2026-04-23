@@ -7,6 +7,7 @@ kafka:
     ticker: oraculum.ticker
     incomeStatement: oraculum.income_statement
     balanceSheet: oraculum.balance_sheet
+    cashFlowStatement: oraculum.cash_flow_statement
     ratio: oraculum.ratio
 
 harvester:

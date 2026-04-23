@@ -18,7 +18,7 @@ class _KafkaTopicsConfig:
         self.ticker: str = source.get("kafka.topics.ticker")
         self.income_statement: str = source.get("kafka.topics.incomeStatement")
         self.balance_sheet: str = source.get("kafka.topics.balanceSheet")
-        self.ratio: str = source.get("kafka.topics.ratio")
+        self.cash_flow_statement: str = source.get("kafka.topics.cashFlowStatement")
 
 
 class Config:

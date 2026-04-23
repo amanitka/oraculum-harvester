@@ -18,6 +18,7 @@ from common.requests import Request, parse_request
 from harvester.dispatcher import RequestDispatcher
 from harvester.handlers import (
     BalanceSheetRequestHandler,
+    CashFlowStatementRequestHandler,
     RatioRequestHandler,
     IncomeStatementRequestHandler,
     TickerRequestHandler,
@@ -84,6 +85,7 @@ def build_default_service() -> HarvesterService:
             TickerRequestHandler(provider),
             IncomeStatementRequestHandler(provider),
             BalanceSheetRequestHandler(provider),
+            CashFlowStatementRequestHandler(provider),
             RatioRequestHandler(),
         ]
     )

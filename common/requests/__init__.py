@@ -9,6 +9,7 @@ from common.requests.base import Request
 from common.requests.ratio import FetchRatioRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.balance_sheet import FetchBalanceSheetRequest
+from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from common.requests.ticker import FetchTickerRequest
 
 AnyRequest = Annotated[
@@ -16,6 +17,7 @@ AnyRequest = Annotated[
         FetchTickerRequest,
         FetchIncomeStatementRequest,
         FetchBalanceSheetRequest,
+        FetchCashFlowStatementRequest,
         FetchRatioRequest,
     ],
     Field(discriminator="request_type"),
@@ -38,6 +40,7 @@ def parse_request(payload: bytes | str | dict) -> Request:
 __all__ = [
     "AnyRequest",
     "FetchBalanceSheetRequest",
+    "FetchCashFlowStatementRequest",
     "FetchRatioRequest",
     "FetchIncomeStatementRequest",
     "FetchTickerRequest",

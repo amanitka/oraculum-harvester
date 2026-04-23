@@ -12,6 +12,8 @@ import simfin as sf
 from common import (
     BalanceSheet,
     BalanceSheetTemplate,
+    CashFlowStatement,
+    CashFlowStatementTemplate,
     IncomeStatement,
     IncomeStatementTemplate,
     Ticker,
@@ -33,6 +35,12 @@ _BALANCE_SHEET_LOADERS: Mapping[BalanceSheetTemplate, Callable[..., pd.DataFrame
     "general": sf.load_balance,
     "banks": sf.load_balance_banks,
     "insurance": sf.load_balance_insurance,
+}
+
+_CASH_FLOW_LOADERS: Mapping[CashFlowStatementTemplate, Callable[..., pd.DataFrame]] = {
+    "general": sf.load_cashflow,
+    "banks": sf.load_cashflow_banks,
+    "insurance": sf.load_cashflow_insurance,
 }
 
 _pandas_patched = False
@@ -197,4 +205,39 @@ class SimFinProvider:
             return BalanceSheet.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
             logger.warning("Skipping balance sheet row template=%s ticker=%s: %s", template, symbol, exc)
+            return None
+
+    def fetch_cash_flow_statement(
+            self,
+            template: CashFlowStatementTemplate,
+            variant: str,
+            market: str,
+    ) -> Iterator[CashFlowStatement]:
+        """Yield validated `CashFlowStatement` rows for one SimFin industry template."""
+        cash_flow_data = self._load_cash_flow_statement(template, variant, market)
+        for _, row in cash_flow_data.iterrows():
+            statement = self._data_row_to_cash_flow_statement(row, template)
+            if statement is not None:
+                yield statement
+
+    @staticmethod
+    def _load_cash_flow_statement(template: CashFlowStatementTemplate, variant: str, market: str) -> pd.DataFrame:
+        loader = _CASH_FLOW_LOADERS[template]
+        logger.info(
+            "Loading cash flow statement template=%s variant=%s market=%s",
+            template,
+            variant,
+            market,
+        )
+        return loader(variant=variant, market=market).reset_index()
+
+    @staticmethod
+    def _data_row_to_cash_flow_statement(row: pd.Series, template: CashFlowStatementTemplate) -> Optional[CashFlowStatement]:
+        symbol = row.get("Ticker", "Unknown")
+        try:
+            payload: Dict[str, Any] = row.to_dict()
+            payload["template"] = template
+            return CashFlowStatement.model_validate(payload)
+        except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
+            logger.warning("Skipping cash flow row template=%s ticker=%s: %s", template, symbol, exc)
             return None
