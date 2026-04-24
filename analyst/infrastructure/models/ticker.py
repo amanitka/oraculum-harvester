@@ -1,10 +1,18 @@
-from datetime import datetime, timezone
+"""SQLModel table definition for persisted ticker metadata."""
+
+from __future__ import annotations
+
+from datetime import datetime
 from typing import Optional
 
 from sqlmodel import Field, SQLModel, UniqueConstraint
 
+from analyst.infrastructure.models.base import AuditMixin
 
-class TickerDB(SQLModel, table=True):  # type: ignore[call-arg,misc]  # type: ignore[call-arg,misc]
+
+class TickerDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
+    """Persistent row backing the `ticker` Kafka topic."""
+
     __tablename__ = "ticker"
     __table_args__ = (
         UniqueConstraint("symbol", "market", name="uq_ticker_symbol_market"),
@@ -16,7 +24,7 @@ class TickerDB(SQLModel, table=True):  # type: ignore[call-arg,misc]  # type: ig
     provider_name: Optional[str] = None
     company_name: str
 
-    # Financial Metadata
+    # Financial metadata
     industry_id: Optional[str] = None
     industry_name: Optional[str] = None
     sector_name: Optional[str] = None
@@ -24,13 +32,9 @@ class TickerDB(SQLModel, table=True):  # type: ignore[call-arg,misc]  # type: ig
     description: Optional[str] = None
     employee_count: Optional[int] = None
 
-    # Location/Identity
+    # Location / identity
     market: str = Field(default="us")
     currency: str = Field(default="USD")
     cik: Optional[str] = None
 
     extracted_at: datetime
-
-    # Audit fields
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

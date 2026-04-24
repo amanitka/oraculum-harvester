@@ -6,6 +6,8 @@ from sqlalchemy import pool
 
 from alembic import context
 from sqlmodel import SQLModel
+
+import analyst.infrastructure.models  # noqa: F401 - registers tables on SQLModel.metadata
 from common.config import config as app_config  # Import our config
 
 
