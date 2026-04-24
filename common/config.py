@@ -1,4 +1,5 @@
 """Typed facade over the YAML/env configuration file."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,6 +20,7 @@ class _KafkaTopicsConfig:
         self.income_statement: str = source.get("kafka.topics.incomeStatement")
         self.balance_sheet: str = source.get("kafka.topics.balanceSheet")
         self.cash_flow_statement: str = source.get("kafka.topics.cashFlowStatement")
+        self.ratio: str = source.get("kafka.topics.ratio")
 
 
 class Config:
@@ -28,15 +30,15 @@ class Config:
         source: EnvYAML = EnvYAML(CONFIG_PATH)
         self._source = source
         self.simfin_api_key: str = source.get("simFin.apiKey")
-        self.kafka_brokers: List[str] = self._parse_brokers(
-            source.get("kafka.brokers")
-        )
+        self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
+        self.database_url: str = source.get("database.url")
+        self.analyst_consumer_group: str = source.get("analyst.consumerGroup")
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
 
     @staticmethod
-    def _parse_brokers(value: str | list | None) -> List[str]:
+    def _parse_brokers(value: str | list[str] | None) -> List[str]:
         if not value:
             return ["localhost:9092"]
         if isinstance(value, list):

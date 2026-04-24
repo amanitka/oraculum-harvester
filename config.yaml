@@ -13,3 +13,9 @@ kafka:
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request
+
+database:
+  url: $DATABASE_URL|postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
+
+analyst:
+  consumerGroup: oraculum-analyst

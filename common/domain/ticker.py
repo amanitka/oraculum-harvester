@@ -30,7 +30,7 @@ class Ticker(BaseModel):
 
     @field_validator('*', mode='before')
     @classmethod
-    def handle_nan(cls, v):
+    def handle_nan(cls, v: float | str | None) -> float | str | None:
         if isinstance(v, float) and math.isnan(v):
             return None
         return v

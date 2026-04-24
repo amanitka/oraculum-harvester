@@ -1,4 +1,5 @@
 """`fetch_cash_flow_statement` request schema."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -8,7 +9,11 @@ from pydantic import Field
 from common.domain import CashFlowStatementTemplate
 from common.requests.base import Request
 
-_ALL_TEMPLATES: tuple[CashFlowStatementTemplate, ...] = ("general", "banks", "insurance")
+_ALL_TEMPLATES: tuple[CashFlowStatementTemplate, ...] = (
+    "general",
+    "banks",
+    "insurance",
+)
 
 
 class FetchCashFlowStatementRequest(Request):

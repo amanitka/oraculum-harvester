@@ -8,6 +8,7 @@ so that:
 * the lifecycle (flush + close) is explicit and hooked into `atexit`,
 * tests can call `reset()` to swap or drop the instance.
 """
+
 from __future__ import annotations
 
 import atexit

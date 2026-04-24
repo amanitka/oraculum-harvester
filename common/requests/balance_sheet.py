@@ -1,4 +1,5 @@
 """`fetch_balance_sheet` request schema."""
+
 from __future__ import annotations
 
 from typing import Literal

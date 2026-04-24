@@ -1,4 +1,5 @@
 """Handler for `FetchTickerRequest`."""
+
 from __future__ import annotations
 
 import logging

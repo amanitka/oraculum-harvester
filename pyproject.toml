@@ -8,4 +8,7 @@ dependencies = [
     "pandas>=3.0.2",
     "pydantic>=2.13.2",
     "simfin>=1.0.1",
+    "sqlmodel>=0.0.16",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.18",
 ]

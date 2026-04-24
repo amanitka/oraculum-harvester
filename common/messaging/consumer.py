@@ -4,6 +4,7 @@ Rationale mirrors `producer.py`: a single consumer per process, lazily
 constructed, with explicit lifecycle via `reset()` and `atexit`. Tests
 call `reset()` to swap topics or drop the shared instance.
 """
+
 from __future__ import annotations
 
 import atexit

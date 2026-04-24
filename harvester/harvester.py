@@ -5,6 +5,7 @@ to typed handlers. One process handles requests sequentially; scale
 horizontally by deploying more replicas in the same Kafka consumer
 group (Kafka partitioning provides parallelism).
 """
+
 from __future__ import annotations
 
 import logging
@@ -57,13 +58,9 @@ class HarvesterService:
         try:
             return parse_request(message.value)
         except ValidationError as exc:
-            logger.error(
-                "Invalid request at offset=%s: %s", message.offset, exc
-            )
+            logger.error("Invalid request at offset=%s: %s", message.offset, exc)
         except Exception:  # noqa: BLE001 - supervisor boundary
-            logger.exception(
-                "Unexpected parse error at offset=%s", message.offset
-            )
+            logger.exception("Unexpected parse error at offset=%s", message.offset)
         return None
 
     def _safe_dispatch(self, request: Request) -> None:

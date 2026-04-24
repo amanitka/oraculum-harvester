@@ -1,4 +1,5 @@
 """SimFin data provider."""
+
 from __future__ import annotations
 
 import logging
@@ -134,14 +135,14 @@ class SimFinProvider:
             return None
         try:
             return int(float(value))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def fetch_income(
-            self,
-            template: IncomeStatementTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: IncomeStatementTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[IncomeStatement]:
         """Yield validated `IncomeStatement` rows for one SimFin industry template."""
         income_data = self._load_income(template, variant, market)
@@ -151,7 +152,9 @@ class SimFinProvider:
                 yield statement
 
     @staticmethod
-    def _load_income(template: IncomeStatementTemplate, variant: str, market: str) -> pd.DataFrame:
+    def _load_income(
+        template: IncomeStatementTemplate, variant: str, market: str
+    ) -> pd.DataFrame:
         loader = _INCOME_LOADERS[template]
         logger.info(
             "Loading income template=%s variant=%s market=%s",
@@ -162,21 +165,25 @@ class SimFinProvider:
         return loader(variant=variant, market=market).reset_index()
 
     @staticmethod
-    def _data_row_to_income(row: pd.Series, template: IncomeStatementTemplate) -> Optional[IncomeStatement]:
+    def _data_row_to_income(
+        row: pd.Series, template: IncomeStatementTemplate
+    ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
             return IncomeStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
-            logger.warning("Skipping income row template=%s ticker=%s: %s", template, symbol, exc)
+            logger.warning(
+                "Skipping income row template=%s ticker=%s: %s", template, symbol, exc
+            )
             return None
 
     def fetch_balance_sheet(
-            self,
-            template: BalanceSheetTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: BalanceSheetTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[BalanceSheet]:
         """Yield validated `BalanceSheet` rows for one SimFin industry template."""
         balance_data = self._load_balance_sheet(template, variant, market)
@@ -186,7 +193,9 @@ class SimFinProvider:
                 yield statement
 
     @staticmethod
-    def _load_balance_sheet(template: BalanceSheetTemplate, variant: str, market: str) -> pd.DataFrame:
+    def _load_balance_sheet(
+        template: BalanceSheetTemplate, variant: str, market: str
+    ) -> pd.DataFrame:
         loader = _BALANCE_SHEET_LOADERS[template]
         logger.info(
             "Loading balance sheet template=%s variant=%s market=%s",
@@ -197,21 +206,28 @@ class SimFinProvider:
         return loader(variant=variant, market=market).reset_index()
 
     @staticmethod
-    def _data_row_to_balance_sheet(row: pd.Series, template: BalanceSheetTemplate) -> Optional[BalanceSheet]:
+    def _data_row_to_balance_sheet(
+        row: pd.Series, template: BalanceSheetTemplate
+    ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
             return BalanceSheet.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
-            logger.warning("Skipping balance sheet row template=%s ticker=%s: %s", template, symbol, exc)
+            logger.warning(
+                "Skipping balance sheet row template=%s ticker=%s: %s",
+                template,
+                symbol,
+                exc,
+            )
             return None
 
     def fetch_cash_flow_statement(
-            self,
-            template: CashFlowStatementTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: CashFlowStatementTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[CashFlowStatement]:
         """Yield validated `CashFlowStatement` rows for one SimFin industry template."""
         cash_flow_data = self._load_cash_flow_statement(template, variant, market)
@@ -221,7 +237,9 @@ class SimFinProvider:
                 yield statement
 
     @staticmethod
-    def _load_cash_flow_statement(template: CashFlowStatementTemplate, variant: str, market: str) -> pd.DataFrame:
+    def _load_cash_flow_statement(
+        template: CashFlowStatementTemplate, variant: str, market: str
+    ) -> pd.DataFrame:
         loader = _CASH_FLOW_LOADERS[template]
         logger.info(
             "Loading cash flow statement template=%s variant=%s market=%s",
@@ -232,12 +250,19 @@ class SimFinProvider:
         return loader(variant=variant, market=market).reset_index()
 
     @staticmethod
-    def _data_row_to_cash_flow_statement(row: pd.Series, template: CashFlowStatementTemplate) -> Optional[CashFlowStatement]:
+    def _data_row_to_cash_flow_statement(
+        row: pd.Series, template: CashFlowStatementTemplate
+    ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
             return CashFlowStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
-            logger.warning("Skipping cash flow row template=%s ticker=%s: %s", template, symbol, exc)
+            logger.warning(
+                "Skipping cash flow row template=%s ticker=%s: %s",
+                template,
+                symbol,
+                exc,
+            )
             return None

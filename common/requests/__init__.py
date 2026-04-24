@@ -1,4 +1,5 @@
 """Discriminated union of all harvester requests + a parser."""
+
 from __future__ import annotations
 
 from typing import Annotated, Union
