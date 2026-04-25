@@ -209,3 +209,5 @@ __marimo__/
 .idea/
 # Local scratch / smoke-test helpers (per AGENTS.md section 13)
 _*.py
+
+data/

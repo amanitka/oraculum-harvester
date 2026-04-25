@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import platform
+import selectors
 
 from analyst.app import app
 from analyst.infrastructure.engine import EngineProvider
@@ -29,6 +31,12 @@ async def _run() -> None:
 
 if __name__ == "__main__":
     try:
-        asyncio.run(_run())
+        if platform.system() == "Windows":
+            asyncio.run(
+                _run(),
+                loop_factory=lambda: asyncio.SelectorEventLoop(selectors.SelectSelector()),
+            )
+        else:
+            asyncio.run(_run())
     except KeyboardInterrupt:
         logger.info("Shutting down analyst consumer")

@@ -24,6 +24,7 @@ from common.config import config
 logger = logging.getLogger(__name__)
 
 _PROVIDER_NAME = "simfin"
+_REQUIRED_TICKER_COLUMNS: tuple[str, str] = ("Ticker", "Company Name")
 
 _INCOME_LOADERS: Mapping[IncomeStatementTemplate, Callable[..., pd.DataFrame]] = {
     "general": sf.load_income,
@@ -81,10 +82,26 @@ class SimFinProvider:
         """Yield validated `Ticker` records for the given market."""
         self._industry_map = self._load_industry_map()
         companies = self._load_companies(market)
+        skipped_missing_required = 0
+        skipped_invalid = 0
+        published = 0
         for _, row in companies.iterrows():
+            if not self._has_required_ticker_fields(row):
+                skipped_missing_required += 1
+                continue
             ticker = self._data_row_to_ticker(row)
             if ticker is not None:
+                published += 1
                 yield ticker
+                continue
+            skipped_invalid += 1
+        logger.info(
+            "Ticker load summary market=%s published=%d skipped_missing_required=%d skipped_invalid=%d",
+            market,
+            published,
+            skipped_missing_required,
+            skipped_invalid,
+        )
 
     @staticmethod
     def _configure_sdk(cache_dir: Path) -> None:
@@ -110,6 +127,23 @@ class SimFinProvider:
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
             logger.warning("Skipping ticker %s: %s", symbol, exc)
             return None
+
+    @classmethod
+    def _has_required_ticker_fields(cls, row: pd.Series) -> bool:
+        for column in _REQUIRED_TICKER_COLUMNS:
+            if cls._is_missing(row.get(column)):
+                return False
+        return True
+
+    @staticmethod
+    def _is_missing(value: Any) -> bool:
+        if value is None:
+            return True
+        if isinstance(value, float) and math.isnan(value):
+            return True
+        if isinstance(value, str) and not value.strip():
+            return True
+        return False
 
     def _build_raw_payload(self, row: pd.Series) -> Dict[str, Any]:
         raw: Dict[str, Any] = row.to_dict()
