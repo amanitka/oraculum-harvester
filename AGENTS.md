@@ -41,6 +41,8 @@ Rules:
 - **No cyclic imports.** `domain` never imports from `application`/`infrastructure`.
 - **No vendor SDK in orchestrators.** Keep `simfin`, `boto3`, `psycopg`, etc. inside adapters.
 - **One class per responsibility.** If a file exceeds ~200 lines, consider splitting.
+- **Database objects naming.** Use standard prefixes consistently: `t_` tables (`t_ticker`), `v_` views (`v_latest_ticker`), `pk_` primary keys, `fk_` foreign keys, `uq_` unique constraints, `ix_` indexes, `ck_` check constraints.
+- **Extraction timestamp.** Persisted market-data entities must include a non-null `extracted_at` timestamp representing when harvester fetched the source dataset.
 
 ---
 

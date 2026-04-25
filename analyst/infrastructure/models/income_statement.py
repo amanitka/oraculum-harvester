@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import JSON, Column
@@ -14,7 +14,7 @@ from analyst.infrastructure.models.base import AuditMixin
 class IncomeStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Persistent row backing the `income_statement` Kafka topic."""
 
-    __tablename__ = "income_statement"
+    __tablename__ = "t_income_statement"
     __table_args__ = (
         UniqueConstraint("composite_key", name="uq_income_statement_composite_key"),
     )
@@ -30,4 +30,5 @@ class IncomeStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-
     report_date: date
     publish_date: date
     restated_date: Optional[date] = None
+    extracted_at: datetime
     payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))

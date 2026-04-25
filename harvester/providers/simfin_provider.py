@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
@@ -180,8 +181,9 @@ class SimFinProvider:
     ) -> Iterator[IncomeStatement]:
         """Yield validated `IncomeStatement` rows for one SimFin industry template."""
         income_data = self._load_income(template, variant, market)
+        extracted_at = datetime.now(timezone.utc)
         for _, row in income_data.iterrows():
-            statement = self._data_row_to_income(row, template)
+            statement = self._data_row_to_income(row, template, extracted_at)
             if statement is not None:
                 yield statement
 
@@ -200,12 +202,15 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_income(
-            row: pd.Series, template: IncomeStatementTemplate
+            row: pd.Series,
+            template: IncomeStatementTemplate,
+            extracted_at: datetime,
     ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["extracted_at"] = extracted_at
             return IncomeStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
             logger.warning(
@@ -221,8 +226,13 @@ class SimFinProvider:
     ) -> Iterator[BalanceSheet]:
         """Yield validated `BalanceSheet` rows for one SimFin industry template."""
         balance_data = self._load_balance_sheet(template, variant, market)
+        extracted_at = datetime.now(timezone.utc)
         for _, row in balance_data.iterrows():
-            statement = self._data_row_to_balance_sheet(row, template)
+            statement = self._data_row_to_balance_sheet(
+                row,
+                template,
+                extracted_at,
+            )
             if statement is not None:
                 yield statement
 
@@ -241,12 +251,15 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_balance_sheet(
-            row: pd.Series, template: BalanceSheetTemplate
+            row: pd.Series,
+            template: BalanceSheetTemplate,
+            extracted_at: datetime,
     ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["extracted_at"] = extracted_at
             return BalanceSheet.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
             logger.warning(
@@ -265,8 +278,13 @@ class SimFinProvider:
     ) -> Iterator[CashFlowStatement]:
         """Yield validated `CashFlowStatement` rows for one SimFin industry template."""
         cash_flow_data = self._load_cash_flow_statement(template, variant, market)
+        extracted_at = datetime.now(timezone.utc)
         for _, row in cash_flow_data.iterrows():
-            statement = self._data_row_to_cash_flow_statement(row, template)
+            statement = self._data_row_to_cash_flow_statement(
+                row,
+                template,
+                extracted_at,
+            )
             if statement is not None:
                 yield statement
 
@@ -285,12 +303,15 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_cash_flow_statement(
-            row: pd.Series, template: CashFlowStatementTemplate
+            row: pd.Series,
+            template: CashFlowStatementTemplate,
+            extracted_at: datetime,
     ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["extracted_at"] = extracted_at
             return CashFlowStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
             logger.warning(

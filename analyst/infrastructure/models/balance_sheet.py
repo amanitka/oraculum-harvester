@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import JSON, Column
@@ -14,7 +14,7 @@ from analyst.infrastructure.models.base import AuditMixin
 class BalanceSheetDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Persistent row backing the `balance_sheet` Kafka topic."""
 
-    __tablename__ = "balance_sheet"
+    __tablename__ = "t_balance_sheet"
     __table_args__ = (
         UniqueConstraint("composite_key", name="uq_balance_sheet_composite_key"),
     )
@@ -30,4 +30,5 @@ class BalanceSheetDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg
     report_date: date
     publish_date: date
     restated_date: Optional[date] = None
+    extracted_at: datetime
     payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))

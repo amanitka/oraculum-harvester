@@ -13,7 +13,7 @@ from common.domain.cash_flow_statement import CashFlowStatement
 
 
 class CashFlowStatementRepository:
-    """Read/write access to the `cash_flow_statement` table."""
+    """Read/write access to the `t_cash_flow_statement` table."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -33,6 +33,7 @@ class CashFlowStatementRepository:
             "report_date": statement.report_date,
             "publish_date": statement.publish_date,
             "restated_date": statement.restated_date,
+            "extracted_at": statement.extracted_at,
             "payload": payload,
         }
         if existing is None:

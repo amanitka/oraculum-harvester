@@ -13,7 +13,7 @@ from common.domain.income_statement import IncomeStatement
 
 
 class IncomeStatementRepository:
-    """Read/write access to the `income_statement` table."""
+    """Read/write access to the `t_income_statement` table."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -33,6 +33,7 @@ class IncomeStatementRepository:
             "report_date": statement.report_date,
             "publish_date": statement.publish_date,
             "restated_date": statement.restated_date,
+            "extracted_at": statement.extracted_at,
             "payload": payload,
         }
         if existing is None:

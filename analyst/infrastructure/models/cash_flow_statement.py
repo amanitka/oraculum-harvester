@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any, Optional
 
 from sqlalchemy import JSON, Column
@@ -14,7 +14,7 @@ from analyst.infrastructure.models.base import AuditMixin
 class CashFlowStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Persistent row backing the `cash_flow_statement` Kafka topic."""
 
-    __tablename__ = "cash_flow_statement"
+    __tablename__ = "t_cash_flow_statement"
     __table_args__ = (
         UniqueConstraint("composite_key", name="uq_cash_flow_statement_composite_key"),
     )
@@ -30,4 +30,5 @@ class CashFlowStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[cal
     report_date: date
     publish_date: date
     restated_date: Optional[date] = None
+    extracted_at: datetime
     payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))

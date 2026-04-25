@@ -13,7 +13,7 @@ from common.domain.balance_sheet import BalanceSheet
 
 
 class BalanceSheetRepository:
-    """Read/write access to the `balance_sheet` table."""
+    """Read/write access to the `t_balance_sheet` table."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -33,6 +33,7 @@ class BalanceSheetRepository:
             "report_date": statement.report_date,
             "publish_date": statement.publish_date,
             "restated_date": statement.restated_date,
+            "extracted_at": statement.extracted_at,
             "payload": payload,
         }
         if existing is None:

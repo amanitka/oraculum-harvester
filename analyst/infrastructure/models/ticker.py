@@ -13,7 +13,7 @@ from analyst.infrastructure.models.base import AuditMixin
 class TickerDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Persistent row backing the `ticker` Kafka topic."""
 
-    __tablename__ = "ticker"
+    __tablename__ = "t_ticker"
     __table_args__ = (
         UniqueConstraint("symbol", "market", name="uq_ticker_symbol_market"),
     )
