@@ -17,6 +17,6 @@ async def _session_scope() -> AsyncIterator[AsyncSession]:
         yield session
 
 
-def Session() -> AsyncSession:  # noqa: N802 - declarative factory name
+def Session() -> AsyncSession:
     """Inject a fresh `AsyncSession` into a FastStream subscriber."""
     return Depends(_session_scope)

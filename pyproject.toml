@@ -5,7 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "envyaml>=1.10.211231",
     "pandas>=3.0.2",
-    "pydantic>=2.13.2",
+    "pydantic>=2.13.3",
     "simfin>=1.0.1",
     "sqlmodel>=0.0.16",
     "alembic>=1.13.1",

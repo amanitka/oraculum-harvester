@@ -2,7 +2,7 @@ simFin:
   apiKey: $SIMFIN_API_KEY
 
 kafka:
-  brokers: $REDPANDA_BROKERS|localhost:9092
+  brokers: $REDPANDA_BROKERS
   topics:
     ticker: oraculum.ticker
     incomeStatement: oraculum.income_statement

@@ -9,14 +9,14 @@ broker itself (FastStream 0.6+ API).
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from faststream.kafka import KafkaBroker
 
 from common.config import config
 
 
-def _encode_key(key: Any) -> Optional[bytes]:
+def _encode_key(key: Any) -> bytes | None:
     if key is None:
         return None
     if isinstance(key, bytes):
