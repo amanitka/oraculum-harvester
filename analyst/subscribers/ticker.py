@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import zlib
 
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -14,6 +15,14 @@ from common.domain.ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
+_SAMPLED_INFO_LOG_MODULUS = 500
+
+
+def _should_emit_sample_log(ticker: Ticker) -> bool:
+    """Return whether this ticker should emit an informational sample log."""
+    encoded_key = f"{ticker.symbol}:{ticker.market}".encode("utf-8")
+    return zlib.crc32(encoded_key) % _SAMPLED_INFO_LOG_MODULUS == 0
+
 
 @broker.subscriber(
     config.topics.ticker,
@@ -23,4 +32,5 @@ logger = logging.getLogger(__name__)
 async def on_ticker(ticker: Ticker, session: AsyncSession = Session()) -> None:
     """Persist an incoming ticker event."""
     await TickerRepository(session).upsert(ticker)
-    logger.info("Upserted ticker %s (%s)", ticker.symbol, ticker.market)
+    if _should_emit_sample_log(ticker):
+        logger.info("Upserted sampled ticker %s (%s)", ticker.symbol, ticker.market)

@@ -16,6 +16,7 @@ from faststream import FastStream
 from common.messaging.broker import create_broker
 
 logger = logging.getLogger(__name__)
+logging.getLogger("faststream.access").setLevel(logging.WARNING)
 
 broker = create_broker()
 app = FastStream(broker, logger=logger)
