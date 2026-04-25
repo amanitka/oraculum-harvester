@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, Mapping, Optional
 
@@ -18,6 +18,7 @@ from common import (
     CashFlowStatementTemplate,
     IncomeStatement,
     IncomeStatementTemplate,
+    SharePrice,
     Ticker,
 )
 from common.config import config
@@ -171,6 +172,61 @@ class SimFinProvider:
         try:
             return int(float(value))
         except (TypeError, ValueError):
+            return None
+
+    def fetch_share_prices(
+            self,
+            market: str,
+            variant: str,
+            from_date: Optional[date],
+            safety_window_days: int,
+    ) -> Iterator[SharePrice]:
+        """Yield validated ``SharePrice`` records for the given market and date range."""
+        logger.info(
+            "Loading share prices variant=%s market=%s from_date=%s",
+            variant,
+            market,
+            from_date,
+        )
+        df = sf.load_shareprices(variant=variant, market=market).reset_index()
+
+        if from_date is not None:
+            cutoff = pd.Timestamp(from_date - timedelta(days=safety_window_days))
+            df = df[df["Date"] >= cutoff]
+
+        extracted_at = datetime.now(timezone.utc)
+        published = 0
+        skipped = 0
+        for _, row in df.iterrows():
+            price = self._data_row_to_share_price(row, market, extracted_at)
+            if price is not None:
+                yield price
+                published += 1
+            else:
+                skipped += 1
+
+        logger.info(
+            "Share price load summary market=%s variant=%s published=%d skipped=%d",
+            market,
+            variant,
+            published,
+            skipped,
+        )
+
+    @staticmethod
+    def _data_row_to_share_price(
+            row: pd.Series,
+            market: str,
+            extracted_at: datetime,
+    ) -> Optional[SharePrice]:
+        symbol = row.get("Ticker", "Unknown")
+        try:
+            payload: Dict[str, Any] = row.to_dict()
+            payload["market"] = market
+            payload["extracted_at"] = extracted_at
+            return SharePrice.model_validate(payload)
+        except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
+            logger.warning("Skipping share price row ticker=%s: %s", symbol, exc)
             return None
 
     def fetch_income(

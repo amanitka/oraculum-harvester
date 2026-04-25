@@ -1,4 +1,4 @@
-"""Discriminated union of all harvester requests + a parser."""
+﻿"""Discriminated union of all harvester requests + a parser."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
+from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
 
 AnyRequest = Annotated[
@@ -18,6 +19,7 @@ AnyRequest = Annotated[
         FetchIncomeStatementRequest,
         FetchBalanceSheetRequest,
         FetchCashFlowStatementRequest,
+        FetchSharePriceRequest,
     ],
     Field(discriminator="request_type"),
 ]
@@ -41,6 +43,7 @@ __all__ = [
     "FetchBalanceSheetRequest",
     "FetchCashFlowStatementRequest",
     "FetchIncomeStatementRequest",
+    "FetchSharePriceRequest",
     "FetchTickerRequest",
     "Request",
     "ValidationError",

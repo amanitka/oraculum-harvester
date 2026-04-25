@@ -8,6 +8,7 @@ kafka:
     incomeStatement: oraculum.income_statement
     balanceSheet: oraculum.balance_sheet
     cashFlowStatement: oraculum.cash_flow_statement
+    sharePriceBatch: oraculum.share_price_batch
     ratio: oraculum.ratio
 
 harvester:
@@ -20,3 +21,7 @@ database:
 
 analyst:
   consumerGroup: oraculum-analyst
+  refresh:
+    priceCron: "0 7 * * *"       # every day at 07:00
+    fundamentalsCron: "0 0 * * 0" # every Sunday at midnight
+    tickerCron: "0 0 1 * *"       # 1st of every month at midnight

@@ -11,4 +11,5 @@ dependencies = [
     "alembic>=1.13.1",
     "psycopg[binary]>=3.1.18",
     "faststream[kafka]>=0.5.0",
+    "croniter>=6.2.2",
 ]

@@ -12,6 +12,7 @@ from common.domain import (
     BalanceSheet,
     CashFlowStatement,
     IncomeStatement,
+    SharePriceBatch,
     Ticker,
 )
 from harvester.app import broker
@@ -25,4 +26,7 @@ balance_sheet = broker.publisher(
 )
 cash_flow_statement = broker.publisher(
     config.topics.cash_flow_statement, schema=CashFlowStatement
+)
+share_price_batch = broker.publisher(
+    config.topics.share_price_batch, schema=SharePriceBatch
 )
