@@ -49,7 +49,7 @@ class EngineProvider:
 
     @classmethod
     async def dispose(cls) -> None:
-        """Dispose the engine and drop the shared instance."""
+        """Dispose of the engine and drop the shared instance."""
         engine = cls._engine
         cls._engine = None
         cls._sessionmaker = None

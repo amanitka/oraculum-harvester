@@ -4,7 +4,6 @@ version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
     "envyaml>=1.10.211231",
-    "kafka-python-ng>=2.2.3",
     "pandas>=3.0.2",
     "pydantic>=2.13.2",
     "simfin>=1.0.1",

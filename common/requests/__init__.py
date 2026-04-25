@@ -6,11 +6,10 @@ from typing import Annotated, Union
 
 from pydantic import Field, TypeAdapter, ValidationError
 
-from common.requests.base import Request
-from common.requests.ratio import FetchRatioRequest
-from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.balance_sheet import FetchBalanceSheetRequest
+from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
+from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.ticker import FetchTickerRequest
 
 AnyRequest = Annotated[
@@ -19,7 +18,6 @@ AnyRequest = Annotated[
         FetchIncomeStatementRequest,
         FetchBalanceSheetRequest,
         FetchCashFlowStatementRequest,
-        FetchRatioRequest,
     ],
     Field(discriminator="request_type"),
 ]
@@ -42,7 +40,6 @@ __all__ = [
     "AnyRequest",
     "FetchBalanceSheetRequest",
     "FetchCashFlowStatementRequest",
-    "FetchRatioRequest",
     "FetchIncomeStatementRequest",
     "FetchTickerRequest",
     "Request",
