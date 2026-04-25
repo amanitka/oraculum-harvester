@@ -1,8 +1,8 @@
-simFin:
-  apiKey: $SIMFIN_API_KEY
+simfin:
+  apiKey: $ORACULUM_SIMFIN_API_KEY
 
 kafka:
-  brokers: $REDPANDA_BROKERS
+  brokers: $ORACULUM_KAFKA_BROKERS
   topics:
     ticker: oraculum.ticker
     incomeStatement: oraculum.income_statement
@@ -13,9 +13,10 @@ kafka:
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request
+  dataPath: $ORACULUM_HARVESTER_DATA_PATH|./data
 
 database:
-  url: $DATABASE_URL|postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
+  url: $ORACULUM_DATABASE_URL|postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
 
 analyst:
   consumerGroup: oraculum-analyst

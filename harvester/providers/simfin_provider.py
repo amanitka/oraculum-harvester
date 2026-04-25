@@ -23,7 +23,6 @@ from common.config import config
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_CACHE_DIR = Path("./data/simfin_cache")
 _PROVIDER_NAME = "simfin"
 
 _INCOME_LOADERS: Mapping[IncomeStatementTemplate, Callable[..., pd.DataFrame]] = {
@@ -73,8 +72,9 @@ class SimFinProvider:
     statements and derived ratios.
     """
 
-    def __init__(self, cache_dir: Path = _DEFAULT_CACHE_DIR) -> None:
-        self._configure_sdk(cache_dir)
+    def __init__(self) -> None:
+        cache_path = config.harvester_data_path / "simfin_cache"
+        self._configure_sdk(cache_path)
         self._industry_map: Dict[int, Dict[str, Any]] = {}
 
     def fetch_tickers(self, market: str = "us") -> Iterator[Ticker]:
@@ -135,14 +135,14 @@ class SimFinProvider:
             return None
         try:
             return int(float(value))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return None
 
     def fetch_income(
-        self,
-        template: IncomeStatementTemplate,
-        variant: str,
-        market: str,
+            self,
+            template: IncomeStatementTemplate,
+            variant: str,
+            market: str,
     ) -> Iterator[IncomeStatement]:
         """Yield validated `IncomeStatement` rows for one SimFin industry template."""
         income_data = self._load_income(template, variant, market)
@@ -153,7 +153,7 @@ class SimFinProvider:
 
     @staticmethod
     def _load_income(
-        template: IncomeStatementTemplate, variant: str, market: str
+            template: IncomeStatementTemplate, variant: str, market: str
     ) -> pd.DataFrame:
         loader = _INCOME_LOADERS[template]
         logger.info(
@@ -166,7 +166,7 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_income(
-        row: pd.Series, template: IncomeStatementTemplate
+            row: pd.Series, template: IncomeStatementTemplate
     ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
@@ -180,10 +180,10 @@ class SimFinProvider:
             return None
 
     def fetch_balance_sheet(
-        self,
-        template: BalanceSheetTemplate,
-        variant: str,
-        market: str,
+            self,
+            template: BalanceSheetTemplate,
+            variant: str,
+            market: str,
     ) -> Iterator[BalanceSheet]:
         """Yield validated `BalanceSheet` rows for one SimFin industry template."""
         balance_data = self._load_balance_sheet(template, variant, market)
@@ -194,7 +194,7 @@ class SimFinProvider:
 
     @staticmethod
     def _load_balance_sheet(
-        template: BalanceSheetTemplate, variant: str, market: str
+            template: BalanceSheetTemplate, variant: str, market: str
     ) -> pd.DataFrame:
         loader = _BALANCE_SHEET_LOADERS[template]
         logger.info(
@@ -207,7 +207,7 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_balance_sheet(
-        row: pd.Series, template: BalanceSheetTemplate
+            row: pd.Series, template: BalanceSheetTemplate
     ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
         try:
@@ -224,10 +224,10 @@ class SimFinProvider:
             return None
 
     def fetch_cash_flow_statement(
-        self,
-        template: CashFlowStatementTemplate,
-        variant: str,
-        market: str,
+            self,
+            template: CashFlowStatementTemplate,
+            variant: str,
+            market: str,
     ) -> Iterator[CashFlowStatement]:
         """Yield validated `CashFlowStatement` rows for one SimFin industry template."""
         cash_flow_data = self._load_cash_flow_statement(template, variant, market)
@@ -238,7 +238,7 @@ class SimFinProvider:
 
     @staticmethod
     def _load_cash_flow_statement(
-        template: CashFlowStatementTemplate, variant: str, market: str
+            template: CashFlowStatementTemplate, variant: str, market: str
     ) -> pd.DataFrame:
         loader = _CASH_FLOW_LOADERS[template]
         logger.info(
@@ -251,7 +251,7 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_cash_flow_statement(
-        row: pd.Series, template: CashFlowStatementTemplate
+            row: pd.Series, template: CashFlowStatementTemplate
     ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:

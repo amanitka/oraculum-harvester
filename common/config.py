@@ -10,6 +10,7 @@ from envyaml import EnvYAML
 _CURRENT_DIR = Path(__file__).resolve().parent
 _ROOT_DIR = _CURRENT_DIR.parent
 CONFIG_PATH = _ROOT_DIR / "config.yaml"
+ENV_PATH = _ROOT_DIR / ".env"
 
 
 class _KafkaTopicsConfig:
@@ -27,12 +28,16 @@ class Config:
     """Typed accessor over the YAML/env configuration file."""
 
     def __init__(self) -> None:
-        source: EnvYAML = EnvYAML(CONFIG_PATH)
+        source: EnvYAML = EnvYAML(
+            yaml_file=str(CONFIG_PATH),
+            env_file=str(ENV_PATH) if ENV_PATH.exists() else None,
+        )
         self._source = source
-        self.simfin_api_key: str = source.get("simFin.apiKey")
+        self.simfin_api_key: str = source.get("simfin.apiKey")
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
+        self.harvester_data_path: Path = Path(source.get("harvester.dataPath"))
         self.database_url: str = source.get("database.url")
         self.analyst_consumer_group: str = source.get("analyst.consumerGroup")
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
