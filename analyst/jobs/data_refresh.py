@@ -1,19 +1,18 @@
-"""Periodic data-refresh job functions for the analyst service.
+"""Periodic data-refresh jobs and scheduler wiring for the analyst service.
 
-Each public function publishes one category of harvester requests.
-Cron scheduling and task creation are wired in the composition root
-(``analyst.app``); this module stays pure and testable.
+Each public refresh function publishes one category of harvester requests.
+`create_data_refresh_scheduler` wires those jobs to APScheduler using the
+cron expressions configured for analyst refresh automation.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
-from collections.abc import Awaitable, Callable
-from datetime import date, datetime, timedelta
-from typing import Any, Sequence
+from collections.abc import Awaitable, Callable, Sequence
+from datetime import date, timedelta
 
-from croniter import croniter
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from faststream.kafka import KafkaBroker
 
 from common.config import config
@@ -29,6 +28,17 @@ logger = logging.getLogger(__name__)
 _MARKETS: tuple[str, ...] = ("us",)
 _PRICE_SAFETY_WINDOW_DAYS: int = 7
 _STATEMENT_VARIANTS: tuple[str, ...] = ("annual", "quarterly", "ttm")
+_DEFAULT_MISFIRE_GRACE_SECONDS: int = 300
+_REFRESH_PRICES_JOB_ID: str = "refresh_prices"
+_REFRESH_FUNDAMENTALS_JOB_ID: str = "refresh_fundamentals"
+_REFRESH_TICKERS_JOB_ID: str = "refresh_tickers"
+_JOB_DEFAULTS: dict[str, bool | int] = {
+    "coalesce": True,
+    "max_instances": 1,
+    "misfire_grace_time": _DEFAULT_MISFIRE_GRACE_SECONDS,
+}
+
+type _RefreshJob = Callable[[KafkaBroker], Awaitable[None]]
 
 
 def _build_price_requests() -> list[Request]:
@@ -64,21 +74,63 @@ async def _publish_all(broker: KafkaBroker, requests: Sequence[Request]) -> None
         )
 
 
-async def _run_on_cron(
-    cron: str,
-    job: Callable[..., Awaitable[None]],
-    *args: Any,
+def _build_cron_trigger(cron_expression: str) -> CronTrigger:
+    """Build one cron trigger from a five-field crontab expression."""
+    return CronTrigger.from_crontab(cron_expression)
+
+
+def _add_data_refresh_job(
+        scheduler: AsyncIOScheduler,
+        *,
+        job_id: str,
+        cron_expression: str,
+        job: _RefreshJob,
+        broker: KafkaBroker,
 ) -> None:
-    """Sleep until the next cron fire time, run ``job``, then repeat."""
-    while True:
-        next_run: datetime = croniter(cron, datetime.now()).get_next(datetime)
-        delay = (next_run - datetime.now()).total_seconds()
-        logger.debug("Next run of %s in %.0f s (at %s)", job.__name__, delay, next_run)
-        await asyncio.sleep(max(delay, 0))
-        try:
-            await job(*args)
-        except Exception:
-            logger.exception("Job %s failed; will retry at next scheduled time", job.__name__)
+    """Register one periodic data-refresh publisher job on the scheduler."""
+    scheduler.add_job(
+        func=job,
+        trigger=_build_cron_trigger(cron_expression),
+        kwargs={"broker": broker},
+        id=job_id,
+        replace_existing=True,
+    )
+
+
+def create_data_refresh_scheduler(broker: KafkaBroker) -> AsyncIOScheduler:
+    """Create an APScheduler instance for analyst data-refresh publishing jobs."""
+    scheduler = AsyncIOScheduler(job_defaults=_JOB_DEFAULTS)
+    refresh = config.analyst_refresh
+
+    _add_data_refresh_job(
+        scheduler,
+        job_id=_REFRESH_TICKERS_JOB_ID,
+        cron_expression=refresh.ticker_cron,
+        job=refresh_tickers,
+        broker=broker,
+    )
+    _add_data_refresh_job(
+        scheduler,
+        job_id=_REFRESH_PRICES_JOB_ID,
+        cron_expression=refresh.price_cron,
+        job=refresh_prices,
+        broker=broker,
+    )
+    _add_data_refresh_job(
+        scheduler,
+        job_id=_REFRESH_FUNDAMENTALS_JOB_ID,
+        cron_expression=refresh.fundamentals_cron,
+        job=refresh_fundamentals,
+        broker=broker,
+    )
+
+    logger.info(
+        "Data refresh jobs configured [prices=%s fundamentals=%s tickers=%s]",
+        refresh.price_cron,
+        refresh.fundamentals_cron,
+        refresh.ticker_cron,
+    )
+    return scheduler
 
 
 async def refresh_prices(broker: KafkaBroker) -> None:

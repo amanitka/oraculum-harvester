@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import logging
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from faststream import FastStream
 
-from common.config import config
 from common.messaging.broker import create_broker
 
 logger = logging.getLogger(__name__)
@@ -21,27 +21,37 @@ logging.getLogger("faststream.access").setLevel(logging.WARNING)
 
 broker = create_broker()
 app = FastStream(broker, logger=logger)
+_data_refresh_scheduler: AsyncIOScheduler | None = None
 
 import analyst.subscribers  # noqa: E402, F401 - decorator side-effect
 
 
 @app.after_startup
 async def _start_data_refresh_jobs() -> None:
-    """Create cron-driven asyncio tasks for periodic data refresh after the broker connects."""
-    import asyncio
+    """Start APScheduler-managed periodic data refresh jobs after broker startup."""
+    global _data_refresh_scheduler
+    if _data_refresh_scheduler and _data_refresh_scheduler.running:
+        return
 
-    from analyst.jobs.data_refresh import _run_on_cron, refresh_fundamentals, refresh_prices, refresh_tickers
+    from analyst.jobs.data_refresh import create_data_refresh_scheduler
 
-    refresh = config.analyst_refresh
-    asyncio.create_task(_run_on_cron(refresh.ticker_cron, refresh_tickers, broker))
-    asyncio.create_task(_run_on_cron(refresh.price_cron, refresh_prices, broker))
-    asyncio.create_task(_run_on_cron(refresh.fundamentals_cron, refresh_fundamentals, broker))
-    logger.info(
-        "Data refresh tasks scheduled [prices=%s fundamentals=%s tickers=%s]",
-        refresh.price_cron,
-        refresh.fundamentals_cron,
-        refresh.ticker_cron,
-    )
+    _data_refresh_scheduler = create_data_refresh_scheduler(broker)
+    _data_refresh_scheduler.start()
+    logger.info("Data refresh APScheduler started")
+
+
+@app.on_shutdown
+async def _stop_data_refresh_jobs() -> None:
+    """Stop the APScheduler-managed periodic data refresh jobs."""
+    global _data_refresh_scheduler
+    if _data_refresh_scheduler is None:
+        return
+
+    if _data_refresh_scheduler.running:
+        _data_refresh_scheduler.shutdown(wait=False)
+        logger.info("Data refresh APScheduler stopped")
+
+    _data_refresh_scheduler = None
 
 
 @app.on_startup

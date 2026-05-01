@@ -17,7 +17,7 @@ FetchXxxRequest → [Kafka: oraculum.harvester.request]
 Two services:
 
 - **harvester** — consumes fetch requests, pulls data from SimFin, publishes domain events.
-- **analyst** — consumes domain events and persists them to PostgreSQL.
+- **analyst** — consumes domain events, persists them to PostgreSQL, and runs APScheduler jobs that publish periodic refresh requests to Kafka.
 
 ---
 
@@ -64,12 +64,38 @@ are created automatically every time the analyst service starts.
 ## Running the services
 
 ```powershell
+# One command — analyst (consumer + scheduler) + Streamlit UI
+uv run python scripts/run_ops_stack.py
+
+# Or run separately:
 # Terminal 1 — analyst (consumer + DB writer)
 uv run python -m analyst
 
 # Terminal 2 — harvester (producer)
 uv run python -m harvester
+
+# Terminal 3 — Streamlit operations UI
+uv run streamlit run ui/ui.py
 ```
+
+---
+
+## Operations UI
+
+The Streamlit UI currently provides an operations console with a dedicated
+`Refresh` tab. Each form publishes one request message to
+`oraculum.harvester.request` and shows the request `correlation_id` so runs are
+traceable in logs.
+
+Available refresh forms:
+
+- Ticker refresh
+- Share-price refresh
+- Income statement refresh
+- Balance sheet refresh
+- Cash-flow statement refresh
+
+The `Analysis` tab is a placeholder for upcoming analyst output views.
 
 ---
 
