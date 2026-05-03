@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from common.requests.base import Request
-from ui.application.ports import RefreshRequestPublisher
+from application.ports import RefreshRequestPublisher
 
 
 class RefreshService:

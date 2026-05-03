@@ -5,7 +5,7 @@ from __future__ import annotations
 from common.config import config
 from common.messaging.broker import create_broker
 from common.requests.base import Request
-from ui.application.ports import RefreshRequestPublisher
+from application.ports import RefreshRequestPublisher
 
 
 class KafkaRefreshRequestPublisher(RefreshRequestPublisher):

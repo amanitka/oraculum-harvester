@@ -10,20 +10,78 @@ module load.
 from __future__ import annotations
 
 import logging
+import zlib
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from faststream import FastStream
 
+from common.config import config
 from common.messaging.broker import create_broker
 
 logger = logging.getLogger(__name__)
-logging.getLogger("faststream.access").setLevel(logging.WARNING)
+
+_ACCESS_SAMPLE_MODULUS = 500
+_HIGH_VOLUME_ACCESS_SUFFIXES: tuple[str, str] = (" - Received", " - Processed")
+_ACCESS_TOPIC_LOGGER_NAMES: tuple[str, ...] = (
+    config.topics.ticker,
+    config.topics.income_statement,
+    config.topics.balance_sheet,
+    config.topics.cash_flow_statement,
+    config.topics.share_price_batch,
+)
 
 broker = create_broker()
 app = FastStream(broker, logger=logger)
 _data_refresh_scheduler: AsyncIOScheduler | None = None
 
 import analyst.subscribers  # noqa: E402, F401 - decorator side-effect
+
+
+class _AccessLogSamplingFilter(logging.Filter):
+    """Sample high-volume access INFO logs while keeping all other records."""
+
+    def __init__(self, sample_modulus: int) -> None:
+        super().__init__()
+        self._sample_modulus = sample_modulus
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Return whether one logging record should be emitted."""
+        if record.levelno >= logging.WARNING:
+            return True
+
+        message = record.getMessage()
+        if not message.endswith(_HIGH_VOLUME_ACCESS_SUFFIXES):
+            return True
+
+        encoded_message = message.encode("utf-8")
+        return zlib.crc32(encoded_message) % self._sample_modulus == 0
+
+
+def _install_access_log_sampling() -> None:
+    """Install sampling filters for FastStream access loggers."""
+    sample_filter = _AccessLogSamplingFilter(_ACCESS_SAMPLE_MODULUS)
+    target_loggers = [
+        logging.getLogger(),
+        logging.getLogger("faststream"),
+        logging.getLogger("faststream.access"),
+        *(logging.getLogger(name) for name in _ACCESS_TOPIC_LOGGER_NAMES),
+    ]
+
+    for target_logger in target_loggers:
+        has_sampling_filter = any(
+            isinstance(existing_filter, _AccessLogSamplingFilter)
+            for existing_filter in target_logger.filters
+        )
+        if has_sampling_filter:
+            continue
+        target_logger.addFilter(sample_filter)
+
+
+@app.on_startup
+async def _configure_access_log_sampling() -> None:
+    """Configure sampled access logging before message consumption starts."""
+    _install_access_log_sampling()
+    logger.info("FastStream access-log sampling enabled [1/%d]", _ACCESS_SAMPLE_MODULUS)
 
 
 @app.after_startup

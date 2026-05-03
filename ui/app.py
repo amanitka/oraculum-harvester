@@ -11,7 +11,7 @@ import streamlit as st
 
 from common.config import config
 from common.requests.base import Request
-from ui.application.refresh_request_factory import (
+from application.refresh_request_factory import (
     STATEMENT_TEMPLATES,
     STATEMENT_VARIANTS,
     build_balance_sheet_request,
@@ -20,8 +20,8 @@ from ui.application.refresh_request_factory import (
     build_share_price_request,
     build_ticker_request,
 )
-from ui.application.refresh_service import RefreshService
-from ui.infrastructure.kafka_refresh_request_publisher import KafkaRefreshRequestPublisher
+from application.refresh_service import RefreshService
+from infrastructure.kafka_refresh_request_publisher import KafkaRefreshRequestPublisher
 
 logger = logging.getLogger(__name__)
 
