@@ -27,6 +27,7 @@ class IncomeStatementRepository:
             "ticker": statement.ticker,
             "simfin_id": statement.simfin_id,
             "template": statement.template,
+            "variant": statement.variant,
             "currency": statement.currency,
             "fiscal_year": statement.fiscal_year,
             "fiscal_period": statement.fiscal_period,

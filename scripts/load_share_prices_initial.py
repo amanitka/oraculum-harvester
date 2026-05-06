@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import argparse
 import logging
-import math
 import sys
 from datetime import date, datetime, timezone
 from typing import Iterator
@@ -43,6 +42,7 @@ _DEFAULT_VARIANT = "daily"
 _HISTORICAL_START = date(1990, 1, 1)
 _MONTHS_AHEAD = 9
 _CHUNK_SIZE = 50_000
+_REQUIRED_COLUMNS = ("ticker", "trade_date")
 
 _SIMFIN_COLUMN_MAP: dict[str, str] = {
     "Ticker": "ticker",
@@ -148,6 +148,17 @@ def _load_dataframe(market: str, variant: str) -> pd.DataFrame:
     return df
 
 
+def _is_missing(value: object) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
 def _prepare_rows(
     df: pd.DataFrame, market: str, extracted_at: datetime
 ) -> Iterator[tuple]:
@@ -162,13 +173,22 @@ def _prepare_rows(
             df[col] = None
 
     # Convert pd.Timestamp → datetime.date for the partition key
-    df["trade_date"] = pd.to_datetime(df["trade_date"]).dt.date
+    df["trade_date"] = pd.to_datetime(df["trade_date"], errors="coerce").dt.date
+
+    invalid_required_mask = pd.Series(False, index=df.index)
+    for column in _REQUIRED_COLUMNS:
+        invalid_required_mask |= df[column].map(_is_missing)
+
+    dropped = int(invalid_required_mask.sum())
+    if dropped:
+        logger.warning(
+            "Dropping %d rows with missing required share price fields (ticker/trade_date)",
+            dropped,
+        )
+        df = df[~invalid_required_mask]
 
     for row in df[list(_COPY_COLUMNS)].itertuples(index=False, name=None):
-        yield tuple(
-            None if (isinstance(v, float) and math.isnan(v)) else v
-            for v in row
-        )
+        yield tuple(None if _is_missing(v) else v for v in row)
 
 
 def _next_month(d: date) -> date:
@@ -222,9 +242,9 @@ def _copy_chunk(conn: psycopg.Connection, chunk: list[tuple]) -> None:
     """Truncate staging, COPY chunk, upsert into t_share_price, commit."""
     with conn.cursor() as cur:
         cur.execute("TRUNCATE TABLE share_price_staging")
-    with conn.copy(_COPY_SQL) as copy:
-        for row in chunk:
-            copy.write_row(row)
+        with cur.copy(_COPY_SQL) as copy:
+            for row in chunk:
+                copy.write_row(row)
     with conn.cursor() as cur:
         cur.execute(_UPSERT_SQL)
     conn.commit()

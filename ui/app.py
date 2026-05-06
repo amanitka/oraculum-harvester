@@ -134,11 +134,11 @@ def _render_statement_form(
     st.subheader(title)
     with st.form(form_key):
         market = st.text_input("Market", value=DEFAULT_MARKET, key=f"{form_key}_market")
-        variant = st.selectbox(
-            "Variant",
+        variants = st.multiselect(
+            "Variants",
             options=list(STATEMENT_VARIANTS),
-            index=0,
-            key=f"{form_key}_variant",
+            default=list(STATEMENT_VARIANTS),
+            key=f"{form_key}_variants",
         )
         templates = st.multiselect(
             "Templates",
@@ -151,8 +151,12 @@ def _render_statement_form(
         return
 
     try:
-        request = build_request(market, variant, templates)
-        _trigger_request(request)
+        if not variants:
+            raise ValueError("Select at least one variant.")
+
+        for variant in variants:
+            request = build_request(market, variant, templates)
+            _trigger_request(request)
     except ValueError as error:
         st.error(str(error))
     except Exception:

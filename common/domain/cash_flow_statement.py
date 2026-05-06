@@ -8,6 +8,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 CashFlowStatementTemplate = Literal["general", "banks", "insurance"]
+StatementVariant = Literal["annual", "quarterly", "ttm"]
 
 
 class CashFlowStatement(BaseModel):
@@ -17,13 +18,15 @@ class CashFlowStatement(BaseModel):
     single flat shape designed to back a single relational table. Core fields
     are shared by every template; template-specific fields are ``None`` when
     the row comes from a template that does not report them. The ``template``
-    discriminator tells downstream consumers which fields to expect.
+    and ``variant`` discriminators tell downstream consumers which fields and
+    periodicity to expect.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
     # Discriminator ----------------------------------------------------------
     template: CashFlowStatementTemplate
+    variant: StatementVariant
 
     # Core identifiers (shared by all templates) -----------------------------
     ticker: str = Field(alias="Ticker")
@@ -139,9 +142,11 @@ class CashFlowStatement(BaseModel):
     def composite_key(self) -> str:
         """Unique identifier for Kafka keys and the downstream ORM primary key.
 
-        Example: ``AAPL-2023-FY-general``. Includes ``template`` so rows for
-        the same ticker/period across schemas never collide.
+        Example: ``AAPL-2023-FY-general-annual``. Includes ``template`` and
+        ``variant`` so rows for the same ticker/period across schemas and
+        periodicities never collide.
         """
         return (
-            f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}"
+            f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}-"
+            f"{self.variant}"
         )

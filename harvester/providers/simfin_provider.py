@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 _PROVIDER_NAME = "simfin"
 _REQUIRED_TICKER_COLUMNS: tuple[str, str] = ("Ticker", "Company Name")
+_REQUIRED_SHARE_PRICE_COLUMNS: tuple[str, str] = ("Ticker", "Date")
 
 _INCOME_LOADERS: Mapping[IncomeStatementTemplate, Callable[..., pd.DataFrame]] = {
     "general": sf.load_income,
@@ -191,27 +192,41 @@ class SimFinProvider:
         df = sf.load_shareprices(variant=variant, market=market).reset_index()
 
         if from_date is not None:
+            date_series = pd.to_datetime(df["Date"], errors="coerce")
             cutoff = pd.Timestamp(from_date - timedelta(days=safety_window_days))
-            df = df[df["Date"] >= cutoff]
+            df = df[date_series >= cutoff]
 
         extracted_at = datetime.now(timezone.utc)
         published = 0
-        skipped = 0
+        skipped_missing_required = 0
+        skipped_invalid = 0
         for _, row in df.iterrows():
+            if not self._has_required_share_price_fields(row):
+                skipped_missing_required += 1
+                continue
+
             price = self._data_row_to_share_price(row, market, extracted_at)
             if price is not None:
                 yield price
                 published += 1
             else:
-                skipped += 1
+                skipped_invalid += 1
 
         logger.info(
-            "Share price load summary market=%s variant=%s published=%d skipped=%d",
+            "Share price load summary market=%s variant=%s published=%d skipped_missing_required=%d skipped_invalid=%d",
             market,
             variant,
             published,
-            skipped,
+            skipped_missing_required,
+            skipped_invalid,
         )
+
+    @classmethod
+    def _has_required_share_price_fields(cls, row: pd.Series) -> bool:
+        for column in _REQUIRED_SHARE_PRICE_COLUMNS:
+            if cls._is_missing(row.get(column)):
+                return False
+        return True
 
     @staticmethod
     def _data_row_to_share_price(
@@ -239,7 +254,7 @@ class SimFinProvider:
         income_data = self._load_income(template, variant, market)
         extracted_at = datetime.now(timezone.utc)
         for _, row in income_data.iterrows():
-            statement = self._data_row_to_income(row, template, extracted_at)
+            statement = self._data_row_to_income(row, template, variant, extracted_at)
             if statement is not None:
                 yield statement
 
@@ -260,12 +275,14 @@ class SimFinProvider:
     def _data_row_to_income(
             row: pd.Series,
             template: IncomeStatementTemplate,
+            variant: str,
             extracted_at: datetime,
     ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["variant"] = variant
             payload["extracted_at"] = extracted_at
             return IncomeStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
@@ -287,6 +304,7 @@ class SimFinProvider:
             statement = self._data_row_to_balance_sheet(
                 row,
                 template,
+                variant,
                 extracted_at,
             )
             if statement is not None:
@@ -309,12 +327,14 @@ class SimFinProvider:
     def _data_row_to_balance_sheet(
             row: pd.Series,
             template: BalanceSheetTemplate,
+            variant: str,
             extracted_at: datetime,
     ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["variant"] = variant
             payload["extracted_at"] = extracted_at
             return BalanceSheet.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
@@ -339,6 +359,7 @@ class SimFinProvider:
             statement = self._data_row_to_cash_flow_statement(
                 row,
                 template,
+                variant,
                 extracted_at,
             )
             if statement is not None:
@@ -361,12 +382,14 @@ class SimFinProvider:
     def _data_row_to_cash_flow_statement(
             row: pd.Series,
             template: CashFlowStatementTemplate,
+            variant: str,
             extracted_at: datetime,
     ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
             payload: Dict[str, Any] = row.to_dict()
             payload["template"] = template
+            payload["variant"] = variant
             payload["extracted_at"] = extracted_at
             return CashFlowStatement.model_validate(payload)
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot

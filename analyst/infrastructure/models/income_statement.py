@@ -24,6 +24,7 @@ class IncomeStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-
     ticker: str = Field(index=True)
     simfin_id: int = Field(index=True)
     template: str
+    variant: str = Field(index=True)
     currency: str
     fiscal_year: int
     fiscal_period: str

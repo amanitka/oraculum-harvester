@@ -5,9 +5,29 @@ from datetime import date, datetime, timezone
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 IncomeStatementTemplate = Literal["general", "banks", "insurance"]
+StatementVariant = Literal["annual", "quarterly", "ttm"]
+
+
+def _variant_from_fiscal_period(value: Any) -> StatementVariant:
+    if isinstance(value, str):
+        normalized = value.strip().upper()
+        if normalized == "FY":
+            return "annual"
+        if normalized == "TTM":
+            return "ttm"
+        if normalized in {"Q1", "Q2", "Q3", "Q4"}:
+            return "quarterly"
+    return "annual"
 
 
 class IncomeStatement(BaseModel):
@@ -17,13 +37,15 @@ class IncomeStatement(BaseModel):
     single flat shape designed to back a single relational table. Core fields
     are shared by every template; template-specific fields are ``None`` when
     the row comes from a template that does not report them. The ``template``
-    discriminator tells downstream consumers which fields to expect.
+    and ``variant`` discriminators tell downstream consumers which fields and
+    periodicity to expect.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
     # Discriminator ----------------------------------------------------------
     template: IncomeStatementTemplate
+    variant: StatementVariant
 
     # Core identifiers (shared by all templates) -----------------------------
     ticker: str = Field(alias="Ticker")
@@ -127,14 +149,29 @@ class IncomeStatement(BaseModel):
             return date.fromisoformat(v)
         return v
 
+    @model_validator(mode="before")
+    @classmethod
+    def _populate_variant(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        existing = data.get("variant")
+        if isinstance(existing, str) and existing.strip():
+            return data
+        fiscal_period = data.get("Fiscal Period", data.get("fiscal_period"))
+        payload = dict(data)
+        payload["variant"] = _variant_from_fiscal_period(fiscal_period)
+        return payload
+
     @computed_field  # type: ignore[prop-decorator]
     @property
     def composite_key(self) -> str:
         """Unique identifier for Kafka keys and the downstream ORM primary key.
 
-        Example: ``AAPL-2023-FY-general``. Includes ``template`` so rows for
-        the same ticker/period across schemas never collide.
+        Example: ``AAPL-2023-FY-general-annual``. Includes ``template`` and
+        ``variant`` so rows for the same ticker/period across schemas and
+        periodicities never collide.
         """
         return (
-            f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}"
+            f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}-"
+            f"{self.variant}"
         )

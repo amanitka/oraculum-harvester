@@ -59,6 +59,10 @@ uv run alembic upgrade head
 Monthly partitions from **1990-01** through the current month **+9 months**
 are created automatically every time the analyst service starts.
 
+Fundamentals statement tables (`t_income_statement`, `t_balance_sheet`,
+`t_cash_flow_statement`) persist a `variant` discriminator (`annual`,
+`quarterly`, `ttm`) and include it in `composite_key`.
+
 ---
 
 ## Running the services
@@ -138,6 +142,9 @@ The script:
 2. Creates any missing monthly partitions (1990-01 → now + 9 months).
 3. COPYs rows in chunks of 50 000 into a temporary staging table.
 4. Upserts from staging into `t_share_price` using `ON CONFLICT DO UPDATE`.
+
+The analyst fundamentals refresh job publishes requests for all statement
+variants (`annual`, `quarterly`, and `ttm`) per market.
 
 Re-running is safe — all rows are idempotent on `(ticker, market, trade_date)`.
 
