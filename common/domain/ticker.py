@@ -30,9 +30,7 @@ class Ticker(BaseModel):
 
     @field_validator("provider_id", "industry_id", "cik", mode="before")
     @classmethod
-    def coerce_identifier_to_string(
-        cls, value: int | float | str | None
-    ) -> str | None:
+    def coerce_identifier_to_string(cls, value: int | float | str | None) -> str | None:
         if value is None:
             return None
         if isinstance(value, float):
@@ -45,10 +43,9 @@ class Ticker(BaseModel):
             return str(value)
         return value
 
-    @field_validator('*', mode='before')
+    @field_validator("*", mode="before")
     @classmethod
     def handle_nan(cls, v: float | str | None) -> float | str | None:
         if isinstance(v, float) and math.isnan(v):
             return None
         return v
-

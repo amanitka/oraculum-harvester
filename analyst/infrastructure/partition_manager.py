@@ -42,7 +42,7 @@ class PartitionManager:
 
     @classmethod
     async def ensure_share_price_partitions(
-            cls, session: AsyncSession, months_ahead: int = 9
+        cls, session: AsyncSession, months_ahead: int = 9
     ) -> None:
         """Create any missing monthly partitions.
 
@@ -64,9 +64,9 @@ class PartitionManager:
             current = _next_month(current)
 
         total_months = (
-                (end.year - _HISTORICAL_START.year) * 12
-                + end.month
-                - _HISTORICAL_START.month
+            (end.year - _HISTORICAL_START.year) * 12
+            + end.month
+            - _HISTORICAL_START.month
         )
         logger.info(
             "Share price partition check complete: created=%d total_range_months=%d",
@@ -88,7 +88,7 @@ class PartitionManager:
 
     @staticmethod
     async def _create_partition(
-            session: AsyncSession, name: str, month_start: date
+        session: AsyncSession, name: str, month_start: date
     ) -> None:
         """Issue a ``CREATE TABLE IF NOT EXISTS ... PARTITION OF`` statement."""
         month_end = _next_month(month_start)

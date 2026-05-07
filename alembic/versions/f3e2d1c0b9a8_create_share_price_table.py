@@ -47,12 +47,7 @@ def upgrade() -> None:
             " ON t_share_price (market, trade_date)"
         )
     )
-    op.execute(
-        text(
-            "CREATE INDEX ix_share_price_ticker"
-            " ON t_share_price (ticker)"
-        )
-    )
+    op.execute(text("CREATE INDEX ix_share_price_ticker ON t_share_price (ticker)"))
 
 
 def downgrade() -> None:

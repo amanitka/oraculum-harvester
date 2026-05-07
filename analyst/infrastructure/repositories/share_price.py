@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from sqlalchemy import text, TextClause
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -35,7 +36,7 @@ _UPSERT_SQL: TextClause = text(
 )
 
 
-def _row_to_params(row: SharePrice) -> dict:
+def _row_to_params(row: SharePrice) -> dict[str, Any]:
     """Convert a ``SharePrice`` to a parameter dict for the upsert statement."""
     return {
         "ticker": row.ticker,

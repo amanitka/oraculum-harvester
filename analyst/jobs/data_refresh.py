@@ -54,7 +54,9 @@ def _build_fundamentals_requests() -> list[Request]:
         for variant in _STATEMENT_VARIANTS:
             requests.append(FetchIncomeStatementRequest(market=market, variant=variant))
             requests.append(FetchBalanceSheetRequest(market=market, variant=variant))
-            requests.append(FetchCashFlowStatementRequest(market=market, variant=variant))
+            requests.append(
+                FetchCashFlowStatementRequest(market=market, variant=variant)
+            )
     return requests
 
 
@@ -80,12 +82,12 @@ def _build_cron_trigger(cron_expression: str) -> CronTrigger:
 
 
 def _add_data_refresh_job(
-        scheduler: AsyncIOScheduler,
-        *,
-        job_id: str,
-        cron_expression: str,
-        job: _RefreshJob,
-        broker: KafkaBroker,
+    scheduler: AsyncIOScheduler,
+    *,
+    job_id: str,
+    cron_expression: str,
+    job: _RefreshJob,
+    broker: KafkaBroker,
 ) -> None:
     """Register one periodic data-refresh publisher job on the scheduler."""
     scheduler.add_job(

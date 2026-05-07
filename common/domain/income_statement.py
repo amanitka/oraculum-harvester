@@ -1,4 +1,5 @@
 """Flat Pydantic model for SimFin income statements across industry templates."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -56,9 +57,7 @@ class IncomeStatement(BaseModel):
     report_date: date = Field(alias="Report Date")
     publish_date: date = Field(alias="Publish Date")
     restated_date: date | None = Field(alias="Restated Date", default=None)
-    extracted_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Core share counts ------------------------------------------------------
     shares_basic: float | None = Field(alias="Shares (Basic)", default=None)
@@ -66,7 +65,9 @@ class IncomeStatement(BaseModel):
 
     # Core revenue & bottom line --------------------------------------------
     revenue: float | None = Field(alias="Revenue", default=None)
-    operating_income: float | None = Field(alias="Operating Income (Loss)", default=None)
+    operating_income: float | None = Field(
+        alias="Operating Income (Loss)", default=None
+    )
     pretax_income: float | None = Field(alias="Pretax Income (Loss)", default=None)
     income_tax_benefit_net: float | None = Field(
         alias="Income Tax (Expense) Benefit, Net", default=None

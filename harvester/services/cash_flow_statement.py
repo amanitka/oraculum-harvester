@@ -1,62 +1,74 @@
-"""Fetch + publish cash flow statements across industry templates."""
+"""Fetch + publish cash flow statements."""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 
-from common.domain import CashFlowStatementTemplate
-from common.requests import FetchCashFlowStatementRequest
+from common.domain.data_file_ready import DataFileReadyEvent
+from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from harvester.providers import SimFinProvider
-from harvester.publishers import cash_flow_statement as cash_flow_publisher
+from harvester.services.parquet_writer import write_to_parquet
 
 logger = logging.getLogger(__name__)
 
 
 class CashFlowStatementService:
-    """Streams SimFin cash flow statements for every requested industry template."""
+    """Streams cash flow statements from SimFin onto the topic."""
 
     def __init__(self, provider: SimFinProvider) -> None:
         self._provider = provider
 
-    async def fetch_and_publish(
-        self, request: FetchCashFlowStatementRequest
-    ) -> None:
-        """Fan out one request over all templates; publish each row."""
-        total = 0
-        for template in request.templates:
-            count = await self._process_template(request, template)
-            total += count
-        logger.info(
-            "Cash flow statement fan-out complete: %d total rows [cid=%s]",
-            total,
-            request.correlation_id,
-        )
+    async def fetch_and_publish(self, request: FetchCashFlowStatementRequest) -> None:
+        """Fetch rows for all requested templates, publish to Kafka and Parquet."""
+        from harvester import publishers
 
-    async def _process_template(
-        self,
-        request: FetchCashFlowStatementRequest,
-        template: CashFlowStatementTemplate,
-    ) -> int:
-        statements = await asyncio.to_thread(
-            lambda: list(
-                self._provider.fetch_cash_flow_statement(
-                    template=template,
-                    variant=request.variant,
-                    market=request.market,
+        publisher = getattr(publishers, "cash_flow_statement")
+
+        for template in request.templates:
+            rows = await asyncio.to_thread(
+                lambda t=template: list(
+                    getattr(self._provider, "fetch_cash_flow_statements")(
+                        market=request.market,
+                        variant=request.variant,
+                        template=t,
+                    )
                 )
             )
-        )
-        for statement in statements:
-            await cash_flow_publisher.publish(
-                statement, key=statement.composite_key
+
+            if not rows:
+                continue
+
+            for row in rows:
+                await publisher.publish(row, key=row.composite_key)
+
+            run_id = str(request.correlation_id)
+            meta = await asyncio.to_thread(
+                write_to_parquet,
+                models=rows,
+                dataset="cash_flow_statement",
+                run_id=run_id,
+                template=template,
+                variant=request.variant,
             )
-        logger.info(
-            "Published %d cash flow statements [cid=%s market=%s variant=%s template=%s]",
-            len(statements),
-            request.correlation_id,
-            request.market,
-            request.variant,
-            template,
-        )
-        return len(statements)
+
+            event = DataFileReadyEvent(
+                dataset="cash_flow_statement",
+                path=meta["path"],
+                template=template,
+                variant=request.variant,
+                run_id=run_id,
+                file_checksum=meta["checksum"],
+                record_count=meta["count"],
+            )
+
+            await publishers.data_file_ready.publish(
+                event, key=f"cash_flow_statement:{run_id}"
+            )
+
+            logger.info(
+                "Published %d rows for template '%s' (Kafka + Parquet) [cid=%s]",
+                len(rows),
+                template,
+                request.correlation_id,
+            )

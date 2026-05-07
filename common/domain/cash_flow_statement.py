@@ -1,4 +1,5 @@
 """Flat Pydantic model for SimFin cash flow statements across industry templates."""
+
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
@@ -37,9 +38,7 @@ class CashFlowStatement(BaseModel):
     report_date: date = Field(alias="Report Date")
     publish_date: date = Field(alias="Publish Date")
     restated_date: date | None = Field(alias="Restated Date", default=None)
-    extracted_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Core share counts ------------------------------------------------------
     shares_basic: float | None = Field(alias="Shares (Basic)", default=None)

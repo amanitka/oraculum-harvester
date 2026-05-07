@@ -9,7 +9,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.app import broker
 from analyst.dependencies import Session
-from analyst.infrastructure.repositories.income_statement import IncomeStatementRepository
+from analyst.infrastructure.repositories.income_statement import (
+    IncomeStatementRepository,
+)
 from common.config import config
 from common.domain.income_statement import IncomeStatement
 

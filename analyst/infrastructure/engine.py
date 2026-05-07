@@ -37,9 +37,7 @@ class EngineProvider:
         if cls._sessionmaker is None:
             async with cls._lock:
                 if cls._sessionmaker is None:
-                    cls._engine = create_async_engine(
-                        config.database_url, echo=False
-                    )
+                    cls._engine = create_async_engine(config.database_url, echo=False)
                     cls._sessionmaker = async_sessionmaker(
                         cls._engine,
                         class_=AsyncSession,

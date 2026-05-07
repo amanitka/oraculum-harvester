@@ -11,6 +11,9 @@ kafka:
     sharePriceBatch: oraculum.share_price_batch
     ratio: oraculum.ratio
 
+shared:
+  folderPath: $ORACULUM_SHARED_FOLDER_PATH|./data/shared/simfin
+
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request

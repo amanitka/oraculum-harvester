@@ -108,7 +108,9 @@ def _validate_templates(
 
     normalized_templates = [template.strip().lower() for template in templates]
     invalid_templates = [
-        template for template in normalized_templates if template not in STATEMENT_TEMPLATES
+        template
+        for template in normalized_templates
+        if template not in STATEMENT_TEMPLATES
     ]
     if invalid_templates:
         raise ValueError(

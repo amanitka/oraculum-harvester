@@ -9,7 +9,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.app import broker
 from analyst.dependencies import Session
-from analyst.infrastructure.repositories.cash_flow_statement import CashFlowStatementRepository
+from analyst.infrastructure.repositories.cash_flow_statement import (
+    CashFlowStatementRepository,
+)
 from common.config import config
 from common.domain.cash_flow_statement import CashFlowStatement
 

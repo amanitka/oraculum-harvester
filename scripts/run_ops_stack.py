@@ -58,7 +58,7 @@ def _start_process(name: str) -> subprocess.Popen[bytes]:
 
 
 def _wait_for_process_exit(
-        processes: Mapping[str, subprocess.Popen[bytes]],
+    processes: Mapping[str, subprocess.Popen[bytes]],
 ) -> tuple[str, int]:
     """Wait for one managed process to exit and return name and code."""
     while True:

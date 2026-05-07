@@ -18,7 +18,9 @@ class _AnalystRefreshConfig:
 
     def __init__(self, source: EnvYAML) -> None:
         self.price_cron: str = source.get("analyst.refresh.priceCron", "0 7 * * *")
-        self.fundamentals_cron: str = source.get("analyst.refresh.fundamentalsCron", "0 0 * * 0")
+        self.fundamentals_cron: str = source.get(
+            "analyst.refresh.fundamentalsCron", "0 0 * * 0"
+        )
         self.ticker_cron: str = source.get("analyst.refresh.tickerCron", "0 0 1 * *")
 
 
@@ -32,6 +34,9 @@ class _KafkaTopicsConfig:
         self.cash_flow_statement: str = source.get("kafka.topics.cashFlowStatement")
         self.share_price_batch: str = source.get("kafka.topics.sharePriceBatch")
         self.ratio: str = source.get("kafka.topics.ratio")
+        self.data_file_ready: str = source.get(
+            "kafka.topics.dataFileReady", "oraculum.data_file_ready"
+        )
 
 
 class Config:
@@ -52,6 +57,10 @@ class Config:
         self.analyst_consumer_group: str = source.get("analyst.consumerGroup")
         self.analyst_refresh: _AnalystRefreshConfig = _AnalystRefreshConfig(source)
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
+        self.shared_folder_path: Path = Path(
+            source.get("shared.folderPath", "./data/shared/simfin")
+        )
+        self.shared_folder_path.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _parse_brokers(value: str | list[str] | None) -> List[str]:

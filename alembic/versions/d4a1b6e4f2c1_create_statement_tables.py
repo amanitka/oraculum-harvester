@@ -76,7 +76,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("composite_key", name="uq_cash_flow_statement_composite_key"),
+        sa.UniqueConstraint(
+            "composite_key", name="uq_cash_flow_statement_composite_key"
+        ),
     )
     op.create_index(
         op.f("ix_cash_flow_statement_composite_key"),

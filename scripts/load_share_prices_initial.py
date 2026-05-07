@@ -60,9 +60,20 @@ _SIMFIN_COLUMN_MAP: dict[str, str] = {
 }
 
 _COPY_COLUMNS = (
-    "ticker", "sim_fin_id", "currency", "market", "trade_date",
-    "open", "high", "low", "close", "adj_close",
-    "volume", "shares_outstanding", "dividend", "extracted_at",
+    "ticker",
+    "sim_fin_id",
+    "currency",
+    "market",
+    "trade_date",
+    "open",
+    "high",
+    "low",
+    "close",
+    "adj_close",
+    "volume",
+    "shares_outstanding",
+    "dividend",
+    "extracted_at",
 )
 
 _STAGING_DDL = """
@@ -155,7 +166,7 @@ def _is_missing(value: object) -> bool:
         return not value.strip()
     try:
         return bool(pd.isna(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False
 
 
@@ -255,8 +266,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Bulk-load SimFin share prices into PostgreSQL."
     )
-    parser.add_argument("--market", default=_DEFAULT_MARKET, help="SimFin market (default: us)")
-    parser.add_argument("--variant", default=_DEFAULT_VARIANT, help="SimFin variant (default: daily)")
+    parser.add_argument(
+        "--market", default=_DEFAULT_MARKET, help="SimFin market (default: us)"
+    )
+    parser.add_argument(
+        "--variant", default=_DEFAULT_VARIANT, help="SimFin variant (default: daily)"
+    )
     args = parser.parse_args()
 
     _patch_pandas()
@@ -282,7 +297,12 @@ def main() -> None:
             chunk = all_rows[start : start + _CHUNK_SIZE]
             _copy_chunk(conn, chunk)
             upserted += len(chunk)
-            logger.info("  upserted %d / %d rows (%.1f%%)", upserted, total, 100 * upserted / total)
+            logger.info(
+                "  upserted %d / %d rows (%.1f%%)",
+                upserted,
+                total,
+                100 * upserted / total,
+            )
 
     logger.info(
         "Done. market=%s variant=%s total_rows=%d",

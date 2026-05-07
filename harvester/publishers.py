@@ -14,6 +14,7 @@ from common.domain import (
     IncomeStatement,
     SharePriceBatch,
     Ticker,
+    DataFileReadyEvent,
 )
 from harvester.app import broker
 
@@ -21,12 +22,14 @@ ticker = broker.publisher(config.topics.ticker, schema=Ticker)
 income_statement = broker.publisher(
     config.topics.income_statement, schema=IncomeStatement
 )
-balance_sheet = broker.publisher(
-    config.topics.balance_sheet, schema=BalanceSheet
-)
+balance_sheet = broker.publisher(config.topics.balance_sheet, schema=BalanceSheet)
 cash_flow_statement = broker.publisher(
     config.topics.cash_flow_statement, schema=CashFlowStatement
 )
 share_price_batch = broker.publisher(
     config.topics.share_price_batch, schema=SharePriceBatch
+)
+
+data_file_ready = broker.publisher(
+    config.topics.data_file_ready, schema=DataFileReadyEvent
 )
