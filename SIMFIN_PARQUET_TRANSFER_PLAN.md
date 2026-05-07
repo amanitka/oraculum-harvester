@@ -6,7 +6,14 @@ Yes — this is a strong and practical design for your current goals.
 
 - Keep PostgreSQL as the system of record for serving and constraints.
 - Move heavy data payload transfer to shared Parquet files.
-- Use Kafka only as a control-plane notification (`file_ready`) to trigger ingestion.
+- Use Kafka only as a control-plane notification (`data_file_ready`) to trigger ingestion.
+
+**Topic Strategy: Single vs. Multiple Topics**
+A single `data_file_ready` topic is recommended over separate topics per dataset (e.g., `file_ready_ticker`, `file_ready_share_price`) for this project because:
+- **Single Consumer:** A single Analyst consumer application processes all incoming data.
+- **Low Event Volume:** While individual Parquet files are large (e.g., 14 million rows for share prices), the number of *files* (and thus Kafka events) is very small.
+- **Minimal Overhead:** A single topic on a single-node Redpanda cluster simplifies consumer logic, reduces polling loops, and keeps infrastructure maintenance completely trivial.
+- **No Ordering Constraints:** Datasets don't depend on strictly ordered ingestion across types, so multiplexing events onto one topic is perfectly safe. The consumer just routes processing based on the `dataset` field in the payload.
 
 This usually improves load performance while preserving PostgreSQL semantics.
 
@@ -16,7 +23,7 @@ This usually improves load performance while preserving PostgreSQL semantics.
 
 1. Harvester fetches SimFin data and validates each record with Pydantic domain models.
 2. Harvester writes standardized Parquet files to a shared folder (atomic publish).
-3. Harvester emits a small Kafka `file_ready` event with metadata only.
+3. Harvester emits a small Kafka `data_file_ready` event with metadata only.
 4. Analyst consumes the event, validates file metadata and schema version.
 5. Analyst bulk-loads Parquet into a staging table.
 6. Analyst executes `MERGE` into target PostgreSQL table using natural keys.
@@ -40,11 +47,11 @@ Rules:
 
 ---
 
-### 3. Kafka event contract (`file_ready`)
+### 3. Kafka event contract (`data_file_ready`)
 
 Minimal recommended payload:
 
-- `event_type`: `simfin.file_ready`
+- `event_type`: `simfin.data_file_ready`
 - `dataset`: `ticker | share_price | balance_sheet | income_statement | cash_flow_statement`
 - `path`: shared folder path (or URI)
 - `template`: `general | banks | insurance` (for statement datasets)
@@ -61,7 +68,7 @@ Idempotency key on analyst side: `dataset + run_id + file_checksum`.
 
 ### 4. Analyst load algorithm (idempotent)
 
-1. Receive `file_ready` event.
+1. Receive `data_file_ready` event.
 2. Validate required fields and supported `schema_version`.
 3. Check if `dataset + run_id + file_checksum` already processed.
     - If yes: acknowledge and skip.
@@ -104,7 +111,7 @@ Retry rules:
 #### 5.3 `t_balance_sheet`
 
 1. Use `common.domain.balance_sheet.BalanceSheet` for normalization.
-2. Ensure `template` and `variant` are always present.
+2. Ensure `template` (e.g. general, banks) and `variant` (e.g. annual, quarterly) are stored as distinct physical columns in both `stg_balance_sheet` and `t_balance_sheet`. This is critical to prevent overwriting annual data with quarterly data.
 3. Create/maintain `stg_balance_sheet`.
 4. Merge key: `ticker + fiscal_year + fiscal_period + template + variant`.
 5. Upsert all statement fields and `extracted_at`.
@@ -112,7 +119,7 @@ Retry rules:
 #### 5.4 `t_income_statement`
 
 1. Use `common.domain.income_statement` model as source schema.
-2. Keep consistent handling of `template`, `variant`, and date fields.
+2. Ensure `template` and `variant` are stored as physical columns in both staging and target tables, just like balance sheet.
 3. Create/maintain `stg_income_statement`.
 4. Merge key: `ticker + fiscal_year + fiscal_period + template + variant`.
 5. Upsert all statement fields and `extracted_at`.
@@ -120,7 +127,7 @@ Retry rules:
 #### 5.5 `t_cash_flow_statement`
 
 1. Use `common.domain.cash_flow_statement` model as source schema.
-2. Keep same partitioning and naming policy as other statements.
+2. Ensure `template` and `variant` are stored as physical columns in both staging and target tables. Keep same partitioning and naming policy as other statements.
 3. Create/maintain `stg_cash_flow_statement`.
 4. Merge key: `ticker + fiscal_year + fiscal_period + template + variant`.
 5. Upsert all statement fields and `extracted_at`.
