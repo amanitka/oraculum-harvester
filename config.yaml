@@ -1,0 +1,33 @@
+simfin:
+  apiKey: $ORACULUM_SIMFIN_API_KEY
+
+kafka:
+  brokers: $ORACULUM_KAFKA_BROKERS
+  topics:
+    ticker: oraculum.ticker
+    incomeStatement: oraculum.income_statement
+    balanceSheet: oraculum.balance_sheet
+    cashFlowStatement: oraculum.cash_flow_statement
+    sharePriceBatch: oraculum.share_price_batch
+    ratio: oraculum.ratio
+
+shared:
+  folderPath: $ORACULUM_SHARED_FOLDER_PATH|./data/shared
+
+harvester:
+  consumerGroup: oraculum-harvester
+  requestTopic: oraculum.harvester.request
+  dataPath: $ORACULUM_HARVESTER_DATA_PATH|./data
+
+database:
+  url: $ORACULUM_DATABASE_URL|postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
+
+analyst:
+  consumerGroup: oraculum-analyst
+  refresh:
+    priceCron: "0 7 * * *"       # every day at 07:00
+    fundamentalsCron: "0 0 * * 0" # every Sunday at midnight
+    tickerCron: "0 0 1 * *"       # 1st of every month at midnight
+  cleanup:
+    dataCleanupCron: "$ORACULUM_DATA_CLEANUP_CRON|0 3 * * *"
+    dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3

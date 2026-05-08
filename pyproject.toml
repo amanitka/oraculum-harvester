@@ -1,0 +1,17 @@
+[project]
+name = "oraculum"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "envyaml>=1.10.211231",
+    "pandas>=3.0.2",
+    "pydantic>=2.13.3",
+    "simfin>=1.0.1",
+    "sqlmodel>=0.0.16",
+    "alembic>=1.13.1",
+    "psycopg[binary]>=3.1.18",
+    "faststream[kafka]>=0.5.0",
+    "streamlit>=1.57.0",
+    "apscheduler>=3.11.2",
+    "pyarrow>=24.0.0",
+]
