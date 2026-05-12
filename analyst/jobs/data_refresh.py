@@ -19,6 +19,7 @@ from common.config import config
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
+from common.requests.derived import FetchDerivedRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
@@ -48,7 +49,7 @@ def _build_price_requests() -> list[Request]:
 
 
 def _build_fundamentals_requests() -> list[Request]:
-    """Return income statement, balance sheet, and cash flow requests for all markets and variants."""
+    """Return fundamentals requests for all markets and variants."""
     requests: list[Request] = []
     for market in _MARKETS:
         for variant in _STATEMENT_VARIANTS:
@@ -57,6 +58,7 @@ def _build_fundamentals_requests() -> list[Request]:
             requests.append(
                 FetchCashFlowStatementRequest(market=market, variant=variant)
             )
+            requests.append(FetchDerivedRequest(market=market, variant=variant))
     return requests
 
 
@@ -141,7 +143,7 @@ async def refresh_prices(broker: KafkaBroker) -> None:
 
 
 async def refresh_fundamentals(broker: KafkaBroker) -> None:
-    """Publish income statement, balance sheet, and cash flow refresh requests."""
+    """Publish fundamentals refresh requests."""
     await _publish_all(broker, _build_fundamentals_requests())
 
 

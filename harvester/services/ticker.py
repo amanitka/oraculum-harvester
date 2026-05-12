@@ -8,7 +8,6 @@ import logging
 from common.domain.data_file_ready import DataFileReadyEvent
 from common.requests import FetchTickerRequest
 from harvester.providers import SimFinProvider
-from harvester.publishers import data_file_ready as data_file_ready_publisher
 from harvester.services.parquet_writer import write_to_parquet
 
 logger = logging.getLogger(__name__)
@@ -22,6 +21,8 @@ class TickerService:
 
     async def fetch_and_publish(self, request: FetchTickerRequest) -> None:
         """Materialise tickers in a worker thread, then publish to Parquet."""
+        from harvester import publishers
+
         tickers = await asyncio.to_thread(
             lambda: list(self._provider.fetch_tickers(market=request.market))
         )
@@ -40,7 +41,7 @@ class TickerService:
                 record_count=meta["count"],
             )
 
-            await data_file_ready_publisher.publish(event, key=f"ticker:{run_id}")
+            await publishers.data_file_ready.publish(event, key=f"ticker:{run_id}")
 
         logger.info(
             "Published %d tickers to Parquet [cid=%s market=%s]",

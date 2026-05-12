@@ -14,6 +14,23 @@ from typing import Any, Callable, Dict, Iterator, Optional
 
 import pandas as pd
 import simfin as sf
+from simfin.names import (
+    ACC_NOTES_RECV,
+    CAPEX,
+    CASH_EQUIV_ST_INVEST,
+    DEPR_AMOR,
+    INCOME_TAX,
+    INTEREST_EXP_NET,
+    INVENTORIES,
+    NET_CASH_OPS,
+    NET_INCOME,
+    REVENUE,
+    SHARES_BASIC,
+    SHARES_DILUTED,
+    TOTAL_CUR_ASSETS,
+    TOTAL_EQUITY,
+    TOTAL_LIABILITIES,
+)
 from pydantic import ValidationError
 
 from common.config import config
@@ -22,6 +39,7 @@ from common.domain.cash_flow_statement import (
     CashFlowStatement,
     CashFlowStatementTemplate,
 )
+from common.domain.derived import Derived, DerivedTemplate
 from common.domain.income_statement import IncomeStatement, IncomeStatementTemplate
 from common.domain.share_price import SharePrice
 from common.domain.ticker import Ticker
@@ -39,6 +57,16 @@ _REQUIRED_STATEMENT_COLUMNS = (
     "Fiscal Period",
     "Report Date",
     "Publish Date",
+)
+_DERIVED_JOIN_COLUMNS = (
+    "Ticker",
+    "SimFinId",
+    "Currency",
+    "Fiscal Year",
+    "Fiscal Period",
+    "Report Date",
+    "Publish Date",
+    "Restated Date",
 )
 
 _INCOME_LOADERS: dict[IncomeStatementTemplate, Callable[..., pd.DataFrame]] = {
@@ -465,5 +493,193 @@ class SimFinProvider:
                 template,
                 symbol,
                 exc,
+            )
+            return None
+
+    def fetch_derived(
+            self,
+            template: DerivedTemplate,
+            variant: str,
+            market: str,
+    ) -> Iterator[Derived]:
+        """Yield validated `Derived` rows for one SimFin industry template."""
+        extracted_at = datetime.now(timezone.utc)
+        frame = self._build_derived_frame(template, variant, market, extracted_at)
+        published = 0
+        skipped_invalid = 0
+        for _, row in frame.iterrows():
+            derived = self._data_row_to_derived(row, template)
+            if derived is not None:
+                published += 1
+                yield derived
+                continue
+            skipped_invalid += 1
+        logger.info(
+            "Derived load summary template=%s variant=%s market=%s published=%d skipped_invalid=%d",
+            template,
+            variant,
+            market,
+            published,
+            skipped_invalid,
+        )
+
+    def _build_derived_frame(
+            self,
+            template: DerivedTemplate,
+            variant: str,
+            market: str,
+            extracted_at: datetime,
+    ) -> pd.DataFrame:
+        """Build the parquet-ready derived metrics frame."""
+        income_data = self._load_income(template, variant, market)
+        balance_data = self._load_balance_sheet(template, variant, market)
+        cash_flow_data = self._load_cash_flow_statement(template, variant, market)
+        merged = self._merge_derived_sources(income_data, balance_data, cash_flow_data)
+        return self._calculate_derived_metrics(merged, template, variant, extracted_at)
+
+    @classmethod
+    def _merge_derived_sources(
+            cls,
+            income_data: pd.DataFrame,
+            balance_data: pd.DataFrame,
+            cash_flow_data: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Join income, balance sheet, and cash flow rows by statement identity."""
+        income = cls._prepare_derived_source(income_data)
+        balance = cls._prepare_derived_source(balance_data)
+        cash_flow = cls._prepare_derived_source(cash_flow_data)
+        with_balance = income.merge(balance, on=list(_DERIVED_JOIN_COLUMNS), how="inner")
+        return with_balance.merge(
+            cash_flow,
+            on=list(_DERIVED_JOIN_COLUMNS),
+            how="inner",
+            suffixes=("", "_cash"),
+        )
+
+    @staticmethod
+    def _prepare_derived_source(data: pd.DataFrame) -> pd.DataFrame:
+        """Ensure one SimFin source frame can participate in derived joins."""
+        prepared = data.copy()
+        if "Restated Date" not in prepared.columns:
+            prepared["Restated Date"] = None
+        missing = [column for column in _DERIVED_JOIN_COLUMNS if column not in prepared.columns]
+        if missing:
+            raise ValueError(
+                "Cannot calculate derived metrics; missing join columns: "
+                + ", ".join(missing)
+            )
+        prepared["Restated Date"] = prepared["Restated Date"].astype("object").where(
+            pd.notna(prepared["Restated Date"]), None
+        )
+        return prepared
+
+    @classmethod
+    def _calculate_derived_metrics(
+            cls,
+            data: pd.DataFrame,
+            template: DerivedTemplate,
+            variant: str,
+            extracted_at: datetime,
+    ) -> pd.DataFrame:
+        """Calculate all derived metric columns from merged statement rows."""
+        net_income = cls._numeric_column(data, NET_INCOME)
+        revenue = cls._numeric_column(data, REVENUE)
+        total_equity = cls._numeric_column(data, TOTAL_EQUITY)
+        return pd.DataFrame(
+            {
+                "template": template,
+                "variant": variant,
+                "ticker": data["Ticker"],
+                "simfin_id": data["SimFinId"],
+                "currency": data["Currency"],
+                "fiscal_year": data["Fiscal Year"],
+                "fiscal_period": data["Fiscal Period"],
+                "report_date": data["Report Date"],
+                "publish_date": data["Publish Date"],
+                "restated_date": data["Restated Date"],
+                "extracted_at": extracted_at,
+                "ebitda": cls._calculate_ebitda(data),
+                "free_cash_flow": cls._calculate_free_cash_flow(data),
+                "ncav": cls._calculate_ncav(data),
+                "net_net_working_capital": cls._calculate_net_net_working_capital(data),
+                "shares_stabilized": cls._calculate_shares_stabilized(data),
+                "return_on_equity": cls._safe_ratio(net_income, total_equity),
+                "net_margin": cls._safe_ratio(net_income, revenue),
+                "revenue": revenue,
+                "net_income": net_income,
+            }
+        )
+
+    @classmethod
+    def _calculate_ebitda(cls, data: pd.DataFrame) -> pd.Series:
+        """Calculate EBITDA from income and cash flow statement columns."""
+        return (
+            cls._zero_filled_numeric_column(data, NET_INCOME)
+            - cls._zero_filled_numeric_column(data, INTEREST_EXP_NET)
+            - cls._zero_filled_numeric_column(data, INCOME_TAX)
+            + cls._zero_filled_numeric_column(data, DEPR_AMOR)
+        )
+
+    @classmethod
+    def _calculate_free_cash_flow(cls, data: pd.DataFrame) -> pd.Series:
+        """Calculate free cash flow from operating cash flow and capex."""
+        return cls._zero_filled_numeric_column(
+            data, NET_CASH_OPS
+        ) + cls._zero_filled_numeric_column(data, CAPEX)
+
+    @classmethod
+    def _calculate_ncav(cls, data: pd.DataFrame) -> pd.Series:
+        """Calculate net current asset value."""
+        return cls._numeric_column(data, TOTAL_CUR_ASSETS) - cls._numeric_column(
+            data, TOTAL_LIABILITIES
+        )
+
+    @classmethod
+    def _calculate_net_net_working_capital(cls, data: pd.DataFrame) -> pd.Series:
+        """Calculate net-net working capital."""
+        return (
+            cls._zero_filled_numeric_column(data, CASH_EQUIV_ST_INVEST)
+            + cls._zero_filled_numeric_column(data, ACC_NOTES_RECV) * 0.75
+            + cls._zero_filled_numeric_column(data, INVENTORIES) * 0.5
+            - cls._zero_filled_numeric_column(data, TOTAL_LIABILITIES)
+        )
+
+    @classmethod
+    def _calculate_shares_stabilized(cls, data: pd.DataFrame) -> pd.Series:
+        """Return diluted shares with basic shares as fallback."""
+        return cls._numeric_column(data, SHARES_DILUTED).fillna(
+            cls._numeric_column(data, SHARES_BASIC)
+        )
+
+    @staticmethod
+    def _numeric_column(data: pd.DataFrame, column: str) -> pd.Series:
+        """Return one numeric source column, coercing missing values."""
+        if column not in data.columns:
+            return pd.Series(pd.NA, index=data.index, dtype="Float64")
+        return pd.to_numeric(data[column], errors="coerce")
+
+    @classmethod
+    def _zero_filled_numeric_column(cls, data: pd.DataFrame, column: str) -> pd.Series:
+        """Return one numeric source column with missing values set to zero."""
+        return cls._numeric_column(data, column).fillna(0)
+
+    @staticmethod
+    def _safe_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+        """Divide two series while suppressing zero-denominator infinities."""
+        safe_denominator = denominator.mask(denominator == 0)
+        return (numerator / safe_denominator).replace([math.inf, -math.inf], pd.NA)
+
+    @staticmethod
+    def _data_row_to_derived(
+            row: pd.Series,
+            template: DerivedTemplate,
+    ) -> Optional[Derived]:
+        """Validate one calculated derived row."""
+        symbol = row.get("ticker", "Unknown")
+        try:
+            return Derived.model_validate(row.to_dict())
+        except (ValidationError, TypeError) as exc:
+            logger.warning(
+                "Skipping derived row template=%s ticker=%s: %s", template, symbol, exc
             )
             return None

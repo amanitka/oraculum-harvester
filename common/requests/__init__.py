@@ -1,4 +1,4 @@
-﻿"""Discriminated union of all harvester requests + a parser."""
+"""Discriminated union of all harvester requests + a parser."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from pydantic import Field, TypeAdapter, ValidationError
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
+from common.requests.derived import FetchDerivedRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
@@ -19,6 +20,7 @@ AnyRequest = Annotated[
         FetchIncomeStatementRequest,
         FetchBalanceSheetRequest,
         FetchCashFlowStatementRequest,
+        FetchDerivedRequest,
         FetchSharePriceRequest,
     ],
     Field(discriminator="request_type"),
@@ -42,6 +44,7 @@ __all__ = [
     "AnyRequest",
     "FetchBalanceSheetRequest",
     "FetchCashFlowStatementRequest",
+    "FetchDerivedRequest",
     "FetchIncomeStatementRequest",
     "FetchSharePriceRequest",
     "FetchTickerRequest",
