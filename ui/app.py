@@ -16,7 +16,6 @@ from application.refresh_request_factory import (
     STATEMENT_VARIANTS,
     build_balance_sheet_request,
     build_cash_flow_statement_request,
-    build_derived_request,
     build_income_statement_request,
     build_share_price_request,
     build_ticker_request,
@@ -172,14 +171,13 @@ def _render_refresh_tab() -> None:
         "Use these controls to queue refresh requests to Kafka. "
         "The harvester consumes them from the configured request topic."
     )
-    ticker_tab, share_price_tab, income_tab, balance_tab, cash_flow_tab, derived_tab = st.tabs(
+    ticker_tab, share_price_tab, income_tab, balance_tab, cash_flow_tab = st.tabs(
         [
             "Ticker",
             "Share Price",
             "Income Statement",
             "Balance Sheet",
             "Cash Flow",
-            "Derived",
         ]
     )
     with ticker_tab:
@@ -206,14 +204,6 @@ def _render_refresh_tab() -> None:
             title="Cash-flow statement refresh",
             submit_label="Queue cash-flow refresh",
             build_request=build_cash_flow_statement_request,
-        )
-    with derived_tab:
-        _render_statement_form(
-            form_key="refresh_derived_form",
-            title="Derived ratios refresh",
-            submit_label="Queue derived refresh",
-            build_request=build_derived_request,
-            template_options=("general",),
         )
 
 

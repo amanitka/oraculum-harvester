@@ -19,7 +19,6 @@ from common.config import config
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
-from common.requests.derived import FetchDerivedRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
@@ -58,7 +57,6 @@ def _build_fundamentals_requests() -> list[Request]:
             requests.append(
                 FetchCashFlowStatementRequest(market=market, variant=variant)
             )
-            requests.append(FetchDerivedRequest(market=market, variant=variant))
     return requests
 
 

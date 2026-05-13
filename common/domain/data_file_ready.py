@@ -18,7 +18,6 @@ DatasetType = Literal[
     "balance_sheet",
     "income_statement",
     "cash_flow_statement",
-    "derived",
 ]
 
 

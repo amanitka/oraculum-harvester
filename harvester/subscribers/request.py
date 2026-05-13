@@ -15,7 +15,6 @@ from common.requests import (
     AnyRequest,
     FetchBalanceSheetRequest,
     FetchCashFlowStatementRequest,
-    FetchDerivedRequest,
     FetchIncomeStatementRequest,
     FetchSharePriceRequest,
     FetchTickerRequest,
@@ -25,7 +24,6 @@ from harvester.providers import SimFinProvider
 from harvester.services import (
     BalanceSheetService,
     CashFlowStatementService,
-    DerivedService,
     IncomeStatementService,
     SharePriceService,
     TickerService,
@@ -38,7 +36,6 @@ _ticker_service = TickerService(_provider)
 _income_service = IncomeStatementService(_provider)
 _balance_service = BalanceSheetService(_provider)
 _cash_flow_service = CashFlowStatementService(_provider)
-_derived_service = DerivedService(_provider)
 _share_price_service = SharePriceService(_provider)
 
 
@@ -58,7 +55,5 @@ async def on_request(request: AnyRequest) -> None:
             await _balance_service.fetch_and_publish(request)
         case FetchCashFlowStatementRequest():
             await _cash_flow_service.fetch_and_publish(request)
-        case FetchDerivedRequest():
-            await _derived_service.fetch_and_publish(request)
         case FetchSharePriceRequest():
             await _share_price_service.fetch_and_publish(request)

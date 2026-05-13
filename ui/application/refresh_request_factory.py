@@ -7,7 +7,6 @@ from typing import Literal, TypeAlias, cast
 
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
-from common.requests.derived import FetchDerivedRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
@@ -79,19 +78,6 @@ def build_cash_flow_statement_request(
     )
 
 
-def build_derived_request(
-    market: str,
-    variant: str,
-    templates: list[str],
-) -> FetchDerivedRequest:
-    """Build a derived-metrics refresh request."""
-    return FetchDerivedRequest(
-        market=_normalize_market(market),
-        variant=_validate_variant(variant),
-        templates=_validate_derived_templates(templates),
-    )
-
-
 def _normalize_market(market: str) -> str:
     normalized = market.strip().lower()
     if not normalized:
@@ -131,17 +117,6 @@ def _validate_templates(
             "Unsupported template values: " + ", ".join(sorted(set(invalid_templates)))
         )
     return [cast(StatementTemplate, template) for template in normalized_templates]
-
-
-def _validate_derived_templates(templates: list[str]) -> list[Literal["general"]]:
-    """Validate the currently supported derived template selection."""
-    if not templates:
-        raise ValueError("Select at least one template for derived refresh.")
-    normalized_templates = [template.strip().lower() for template in templates]
-    invalid_templates = [template for template in normalized_templates if template != "general"]
-    if invalid_templates:
-        raise ValueError("Derived refresh currently supports only the general template.")
-    return [cast(Literal["general"], template) for template in normalized_templates]
 
 
 def _validate_safety_window_days(safety_window_days: int) -> int:
