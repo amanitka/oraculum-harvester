@@ -16,9 +16,11 @@ the user can review and act on it.
 
 Out of scope for this plan (explicitly deferred):
 
-- Derived SimFin metrics.
 - News feed ingestion.
 - Automated (non-manual) analysis triggers.
+- Cross-ticker peer / sector comparable analysis (requires a curated
+  peer universe). Per-ticker history comparisons are in scope because
+  `v_derived_metrics` already provides them.
 
 ---
 
@@ -44,6 +46,28 @@ Out of scope for this plan (explicitly deferred):
 - **Correlation**: the `correlation_id` from `AnalyzeTickerRequest` is
   reused as the primary key of the persisted analysis row. One trace id
   from UI submit through Kafka through DB record.
+- **Derived metrics access**: agents consume derived ratios on demand from
+  the existing PostgreSQL view `v_derived_metrics` via the read-only
+  `DerivedMetricsRepository`. No new persistence, no recomputation in
+  Python — the SQL view is the single source of truth for ratios.
+- **Read-only data tools**: analysis tools wrap existing analyst
+  repositories (`TickerRepository`, `IncomeStatementRepository`,
+  `BalanceSheetRepository`, `CashFlowStatementRepository`,
+  `SharePriceRepository`, `DerivedMetricsRepository`). Agents never open
+  sessions or write rows.
+- **Statement template is auto-resolved, not user-chosen**: the
+  `PlannerAgent` reads `Ticker.industry_name` / `Ticker.sector_name`
+  and maps it to a single `StatementTemplate`
+  (`general | banks | insurance`) for the whole run. Mixing templates
+  inside one analysis is forbidden because the underlying SimFin
+  schemas are not comparable. The resolved template is recorded in
+  `payload.context.template` for traceability.
+- **Statement variant is purpose-driven, not global**: each agent picks
+  the `StatementVariant` (`annual | quarterly | ttm`) that matches its
+  question. Fundamentals uses `annual` for multi-year trends,
+  Valuation uses `ttm` for current multiples, Risk uses `quarterly`
+  for volatility and earnings-quality signals. The request carries a
+  `default_variant` only for the synthesizer summary table.
 
 ---
 
@@ -52,8 +76,13 @@ Out of scope for this plan (explicitly deferred):
 - Add `kafka.topics.analystRequest` to `config.yaml` and expose it via
   `_KafkaTopicsConfig` in `common/config.py`.
 - Add `common/requests/analyze_ticker.py`:
-  - `request_type: Literal["analyze_ticker"]`
+  - `request_type: Literal["analyze_ticker"]`.
   - `ticker: str`, `market: str = "us"`, `as_of: date | None = None`.
+  - `default_variant: StatementVariant = "annual"` — fallback when an
+    agent does not specify a variant; reuses the existing
+    `StatementVariant` literal from `common/domain/*`.
+  - **No `template` field** — template is resolved from the ticker's
+    industry inside the workflow (see Architectural decisions).
 - Acceptance: `AnalyzeTickerRequest` importable, topic resolvable.
 
 ---
@@ -67,7 +96,14 @@ Goal: a reproducible development dataset so the analyst has data to read.
 - Add a small bootstrap script that publishes ticker + statement fetch
   requests for the universe using existing request models.
 - Document under a new README section "Bootstrap sample data".
-- Acceptance: all five analyst subscribers persist rows for the universe.
+- Universe should include **at least one banks** ticker (e.g., JPM) and
+  **one insurance** ticker (e.g., MET) so all three templates exercise
+  the workflow, plus general-template names.
+- Acceptance: all five analyst subscribers persist rows for the universe
+  and `SELECT template, variant, COUNT(*) FROM v_derived_metrics GROUP BY 1, 2`
+  shows non-zero counts for every (template, variant) pair that the
+  universe actually covers (e.g., general/annual, general/quarterly,
+  general/ttm, banks/annual, insurance/annual).
 
 ---
 
@@ -166,12 +202,54 @@ Goal: a reproducible development dataset so the analyst has data to read.
     validation failure, one automatic retry with a "fix your JSON"
     correction message, then surface error.
 - `analyst/application/agents/context.py` defines `AgentContext`:
-  `ticker`, `market`, `as_of`, typed read-only data tools, prior agent
-  outputs by name, `LlmClient`, `token_budget`.
+  `ticker`, `market`, `as_of`, **`template: StatementTemplate`**
+  (resolved by the planner once),
+  **`default_variant: StatementVariant`**, typed read-only data tools,
+  prior agent outputs by name, `LlmClient`, `token_budget`. The
+  `template` field is immutable for the duration of the run.
 - `analyst/application/agents/tools.py` — read-only callables into
-  repositories: `get_latest_fundamentals`, `get_price_window`,
-  `get_income_statement_history`, `get_balance_sheet_history`,
-  `get_cash_flow_history`. No side effects.
+  repositories. No side effects, no writes, no Kafka publishes:
+  All statement and derived tools accept `template: StatementTemplate`
+  and `variant: StatementVariant`. The agent passes the run-scoped
+  `template` from `AgentContext` and the variant it actually wants:
+
+  - `get_ticker_profile(ticker)` — `TickerRepository`. Returns the row
+    used to derive the template; tools that need template do not call
+    this directly.
+  - `resolve_template(ticker)` — helper used by the planner; maps
+    `Ticker.industry_name` / `sector_name` to one of
+    `general | banks | insurance`. Falls back to `general` with a
+    warning when the mapping is ambiguous.
+  - `get_income_statement_history(ticker, *, template, variant, limit)`
+    — `IncomeStatementRepository`.
+  - `get_balance_sheet_history(ticker, *, template, variant, limit)`
+    — `BalanceSheetRepository`.
+  - `get_cash_flow_history(ticker, *, template, variant, limit)` —
+    `CashFlowStatementRepository`.
+  - `get_price_window(ticker, start, end)` — `SharePriceRepository`
+    (template / variant agnostic).
+  - `get_derived_metrics(ticker, *, template, variant, limit)` —
+    `DerivedMetricsRepository`, returns `DerivedMetricsDB` rows from
+    `v_derived_metrics` (`ebitda`, `free_cash_flow`, `ncav`,
+    `net_net_working_capital`, `shares_stabilized`, `return_on_equity`,
+    `net_margin`, `revenue`, `net_income`).
+
+Template-specific note: the SimFin `banks` and `insurance` schemas
+omit some columns the `general` formulas rely on, so a subset of
+derived metrics will be `NULL` for those templates (e.g.,
+`free_cash_flow` for banks). Agents must treat missing values as
+"not applicable" rather than failing the run.
+
+### Data inputs available to agents
+
+| Agent        | Primary repositories                                                                                                                          |
+|--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
+| Planner      | `TickerRepository` (sanity check ticker exists)                                                                                               |
+| Fundamentals | `IncomeStatementRepository`, `BalanceSheetRepository`, `DerivedMetricsRepository` (`return_on_equity`, `net_margin`, `revenue`, `net_income`) |
+| CashFlow     | `CashFlowStatementRepository`, `DerivedMetricsRepository` (`free_cash_flow`, `ebitda`)                                                        |
+| Valuation    | `DerivedMetricsRepository` (`ebitda`, `free_cash_flow`, `net_income`, `shares_stabilized`), `SharePriceRepository`                            |
+| Risk         | `BalanceSheetRepository`, `DerivedMetricsRepository` (`ncav`, `net_net_working_capital`), `SharePriceRepository` (volatility)                 |
+| Synthesizer  | (no new I/O; merges prior agent outputs)                                                                                                      |
 
 ---
 
@@ -180,18 +258,42 @@ Goal: a reproducible development dataset so the analyst has data to read.
 Proposed roster (all go through the same `LlmClient`, each with its own
 curated prompt in `analyst/application/agents/prompts/*.md`):
 
-1. **PlannerAgent** — consumes the request, decides which specialists
-   to invoke and which data tools to call, emits a plan object.
+1. **PlannerAgent** — consumes the request, **resolves the statement
+   template** from `Ticker.industry_name` / `sector_name`, decides
+   which specialists to invoke and which (template, variant) pairs
+   each one should query, and emits a plan object containing the
+   frozen `template` plus per-agent variant choices.
 2. **FundamentalsAgent** — interprets income statement and balance
-   sheet trends (growth, margins, capital structure).
-3. **CashFlowAgent** — cash generation quality, free cash flow,
-   capex intensity, working-capital hygiene.
-4. **ValuationAgent** — multiples versus own history (sector comps out
-   of scope until derived metrics arrive).
+   sheet trends. Default variant: `annual` (smooths seasonality,
+   multi-year trend visibility). Reads `revenue`, `net_income`,
+   `net_margin`, and `return_on_equity` history from
+   `v_derived_metrics` instead of recomputing in Python.
+3. **CashFlowAgent** — cash generation quality, capex intensity, and
+   working-capital hygiene. Default variant: `annual`, with a
+   `quarterly` cross-check for working-capital swings. Reads
+   `free_cash_flow` and `ebitda` from `v_derived_metrics` and joins
+   with cash-flow statement details for commentary. For `banks` /
+   `insurance` templates, FCF is often `NULL` and the agent must say
+   so explicitly instead of fabricating values.
+4. **ValuationAgent** — multiples versus the ticker's own history.
+   Default variant: `ttm` (most current snapshot). Computes trailing
+   P/E from `net_income` and `shares_stabilized` vs prices, EV/EBITDA
+   approximation from `ebitda`, FCF yield from `free_cash_flow`. For
+   `banks` / `insurance` falls back to template-appropriate ratios
+   (P/B from balance-sheet equity, ROE history) instead of EV/EBITDA.
+   Cross-ticker peer comps remain out of scope.
 5. **RiskAgent** — leverage, liquidity, earnings volatility, red flags.
+   Default variant: `quarterly` (more observations for volatility).
+   Uses `ncav` and `net_net_working_capital` from `v_derived_metrics`
+   as downside-floor sanity checks alongside balance-sheet leverage
+   ratios derived from raw rows. NCAV / NNWC are only meaningful for
+   the `general` template; the agent skips them for banks / insurance
+   and substitutes solvency-style metrics.
 6. **SynthesizerAgent** — merges all specialist outputs into the final
    markdown report and structured verdict (`verdict`, `conviction`,
-   `key_drivers`, `key_risks`).
+   `key_drivers`, `key_risks`). Includes a header line stating the
+   resolved `template` and which variants each specialist used, so a
+   reader can audit the analysis lens at a glance.
 
 Deterministic `AnalysisWorkflow.run(request) -> AnalysisResult`:
 
@@ -240,7 +342,8 @@ Prompt authoring convention:
 - New `docs/analysis_workflow.md` describing the agent roster, prompt
   file locations, and configuration keys.
 - Review checkpoint before proceeding to the deferred extensions
-  (derived metrics, news feeds) mentioned off-plan.
+  (news feeds, automated triggers, cross-ticker peer comps) mentioned
+  off-plan.
 
 ---
 
@@ -269,6 +372,8 @@ analyst/
   infrastructure/
     models/analysis.py
     repositories/analysis.py
+    # already merged: models/derived_metrics.py
+    # already merged: repositories/derived_metrics.py (reads v_derived_metrics)
 alembic/versions/<rev>_add_t_analysis.py
 ui/
   application/analysis_trigger.py
@@ -283,8 +388,18 @@ docs/
 ## Open questions
 
 - **Initial ticker universe**: do you want to provide the ~20 tickers,
-  or pick canonical names such as large-cap US leaders.
+  or pick canonical names such as large-cap US leaders. Universe
+  should cover all three templates (`general`, `banks`, `insurance`).
 - **Default model**: fix a default model per provider, or leave fully
   config-driven with sensible examples only.
 - **Concurrency**: start sequential as specified, then evaluate
   parallelizing specialists after Phase 9 — confirm.
+- **Industry-to-template mapping**: confirm the mapping table the
+  planner uses (e.g., `industry_name LIKE '%Bank%'` -> `banks`,
+  `LIKE '%Insurance%'` -> `insurance`, else `general`). A misclassified
+  ticker silently degrades the report, so this lookup deserves a
+  curated test.
+- **Variant override at request time**: should the UI expose an
+  advanced "force variant" toggle, or is purpose-driven per-agent
+  selection sufficient? Current proposal: keep it implicit, but the
+  request already carries `default_variant` so the UI can extend later.
