@@ -198,9 +198,9 @@ Goal: a reproducible development dataset so the analyst has data to read.
   - `class Agent(ABC)` with `name`, `system_prompt`,
     `input_model: type[BaseModel]`, `output_model: type[BaseModel]`,
     `async run(ctx: AgentContext) -> Output`.
-  - JSON-mode output enforced via prompt plus Pydantic validation. On
-    validation failure, one automatic retry with a "fix your JSON"
-    correction message, then surface error.
+  - Guaranteed Structured Outputs via LLM API (e.g. passing a JSON Schema
+    via `litellm`'s `response_format`). This natively enforces the Pydantic
+    model shape and eliminates the need for manual parsing retries.
 - `analyst/application/agents/context.py` defines `AgentContext`:
   `ticker`, `market`, `as_of`, **`template: StatementTemplate`**
   (resolved by the planner once),
@@ -208,10 +208,13 @@ Goal: a reproducible development dataset so the analyst has data to read.
   prior agent outputs by name, `LlmClient`, `token_budget`. The
   `template` field is immutable for the duration of the run.
 - `analyst/application/agents/tools.py` — read-only callables into
-  repositories. No side effects, no writes, no Kafka publishes:
-  All statement and derived tools accept `template: StatementTemplate`
-  and `variant: StatementVariant`. The agent passes the run-scoped
-  `template` from `AgentContext` and the variant it actually wants:
+  repositories for **Proactive Context Injection**. No explicit LLM tool
+  calling is used. The orchestrator calls these functions, formats the
+  returned data into efficient Markdown tables (passing the full available history), and injects it directly
+  into the agent's prompt.
+  No side effects, no writes, no Kafka publishes. All statement and derived
+  tools accept `template: StatementTemplate` and `variant: StatementVariant`.
+  The tools are:
 
   - `get_ticker_profile(ticker)` — `TickerRepository`. Returns the row
     used to derive the template; tools that need template do not call
@@ -385,21 +388,15 @@ docs/
 
 ---
 
-## Open questions
+## Open questions (Resolved)
 
-- **Initial ticker universe**: do you want to provide the ~20 tickers,
-  or pick canonical names such as large-cap US leaders. Universe
-  should cover all three templates (`general`, `banks`, `insurance`).
-- **Default model**: fix a default model per provider, or leave fully
-  config-driven with sensible examples only.
-- **Concurrency**: start sequential as specified, then evaluate
-  parallelizing specialists after Phase 9 — confirm.
-- **Industry-to-template mapping**: confirm the mapping table the
-  planner uses (e.g., `industry_name LIKE '%Bank%'` -> `banks`,
-  `LIKE '%Insurance%'` -> `insurance`, else `general`). A misclassified
-  ticker silently degrades the report, so this lookup deserves a
-  curated test.
-- **Variant override at request time**: should the UI expose an
-  advanced "force variant" toggle, or is purpose-driven per-agent
-  selection sufficient? Current proposal: keep it implicit, but the
-  request already carries `default_variant` so the UI can extend later.
+- **Initial ticker universe**: Start with a focused, diverse set of ~15 well-known tickers covering all templates:
+  - General: AAPL, MSFT, AMZN, WMT, XOM, JNJ
+  - Banks: JPM, BAC, C, WFC, GS
+  - Insurance: MET, PRU, TRV, AIG
+- **Default model**: Differentiate by agent load, optimizing for Google API's generous free tier ($10/mo):
+  - Fast/Cheap (`gemini-2.5-flash-lite` or `gemini-2.5-flash`) for Specialists & Planner.
+  - Heavyweight (`gemini-2.5-pro`) for the Synthesizer.
+- **Concurrency**: Start sequential as specified. Parallelizing specialists can be evaluated after Phase 9 via `asyncio.gather()` since they share no state.
+- **Industry-to-template mapping**: Create a static configuration file (e.g., `common/domain/templates.yaml`) mapping standard SimFin `industry_name` / `sector_name` to explicit templates, rather than hardcoding string matching logic in code.
+- **Variant override at request time**: Keep it implicit. Specialists are prompted for specific variants; allowing the UI to override could break the prompts and lead to hallucinations.
