@@ -210,8 +210,7 @@ Goal: a reproducible development dataset so the analyst has data to read.
 - `analyst/application/agents/tools.py` — read-only callables into
   repositories for **Proactive Context Injection**. No explicit LLM tool
   calling is used. The orchestrator calls these functions, formats the
-  returned data into efficient Markdown tables (limiting historical data
-  to the last 8 years to preserve token budget), and injects it directly
+  returned data into efficient Markdown tables (passing the full available history), and injects it directly
   into the agent's prompt.
   No side effects, no writes, no Kafka publishes. All statement and derived
   tools accept `template: StatementTemplate` and `variant: StatementVariant`.
@@ -225,11 +224,11 @@ Goal: a reproducible development dataset so the analyst has data to read.
     `general | banks | insurance`. Falls back to `general` with a
     warning when the mapping is ambiguous.
   - `get_income_statement_history(ticker, *, template, variant, limit)`
-    — `IncomeStatementRepository`. The limit should enforce a strict maximum of 8 years of data (8 periods for annual, 32 for quarterly/ttm).
+    — `IncomeStatementRepository`.
   - `get_balance_sheet_history(ticker, *, template, variant, limit)`
-    — `BalanceSheetRepository`. The limit should enforce a strict maximum of 8 years of data.
+    — `BalanceSheetRepository`.
   - `get_cash_flow_history(ticker, *, template, variant, limit)` —
-    `CashFlowStatementRepository`. The limit should enforce a strict maximum of 8 years of data.
+    `CashFlowStatementRepository`.
   - `get_price_window(ticker, start, end)` — `SharePriceRepository`
     (template / variant agnostic).
   - `get_derived_metrics(ticker, *, template, variant, limit)` —
