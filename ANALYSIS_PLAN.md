@@ -395,9 +395,9 @@ docs/
   - General: AAPL, MSFT, AMZN, WMT, XOM, JNJ
   - Banks: JPM, BAC, C, WFC, GS
   - Insurance: MET, PRU, TRV, AIG
-- **Default model**: Differentiate by agent load:
-  - Fast/Cheap (gpt-4o-mini / claude-3-5-haiku) for Specialists & Planner.
-  - Heavyweight (gpt-4o / claude-3-5-sonnet) for the Synthesizer.
+- **Default model**: Differentiate by agent load, optimizing for Google API's generous free tier ($10/mo):
+  - Fast/Cheap (`gemini-2.5-flash-lite` or `gemini-2.5-flash`) for Specialists & Planner.
+  - Heavyweight (`gemini-2.5-pro`) for the Synthesizer.
 - **Concurrency**: Start sequential as specified. Parallelizing specialists can be evaluated after Phase 9 via `asyncio.gather()` since they share no state.
 - **Industry-to-template mapping**: Create a static configuration file (e.g., `common/domain/templates.yaml`) mapping standard SimFin `industry_name` / `sector_name` to explicit templates, rather than hardcoding string matching logic in code.
 - **Variant override at request time**: Keep it implicit. Specialists are prompted for specific variants; allowing the UI to override could break the prompts and lead to hallucinations.
