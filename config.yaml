@@ -9,7 +9,7 @@ kafka:
     balanceSheet: oraculum.balance_sheet
     cashFlowStatement: oraculum.cash_flow_statement
     sharePriceBatch: oraculum.share_price_batch
-    ratio: oraculum.ratio
+    analystRequest: oraculum.analyst.request
 
 shared:
   folderPath: $ORACULUM_SHARED_FOLDER_PATH|./data/shared
