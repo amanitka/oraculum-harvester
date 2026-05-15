@@ -32,11 +32,12 @@ def write_to_parquet(
     template: str | None = None,
     variant: str | None = None,
     fiscal_year: int | None = None,
+    part: int = 0,
 ) -> dict[str, Any]:
     """Write a list of Pydantic models to a Parquet file and return metadata.
 
     The path structure is:
-    {shared_folder}/{dataset}/template={template}/variant={variant}/year={fiscal_year}/run_id={run_id}/part-000.parquet
+    {shared_folder}/{dataset}/template={template}/variant={variant}/year={fiscal_year}/run_id={run_id}/part-{part:03d}.parquet
     """
     if not models:
         return {"count": 0, "path": "", "checksum": ""}
@@ -54,8 +55,9 @@ def write_to_parquet(
     target_dir = base_dir / f"run_id={run_id}"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    tmp_path = target_dir / "part-000.parquet.tmp"
-    final_path = target_dir / "part-000.parquet"
+    filename = f"part-{part:03d}.parquet"
+    tmp_path = target_dir / f"{filename}.tmp"
+    final_path = target_dir / filename
 
     # Convert to DataFrame
     # model_dump(by_alias=False) keeps Python field names, so columns match target table schema roughly.

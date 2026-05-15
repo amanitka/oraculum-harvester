@@ -10,7 +10,7 @@ import logging
 import math
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 import pandas as pd
 import simfin as sf
@@ -180,14 +180,18 @@ class SimFinProvider:
             variant: str,
             from_date: Optional[date],
             safety_window_days: int,
-    ) -> Iterator[SharePrice]:
-        """Yield validated ``SharePrice`` records for the given market and date range."""
+    ) -> Iterator[List[SharePrice]]:
+        """Yield lists of validated ``SharePrice`` records for the given market and date range in chunks."""
         logger.info(
             "Loading share prices variant=%s market=%s from_date=%s",
             variant,
             market,
             from_date,
         )
+        
+        # SimFin's load() does not support chunksize, so we load the DataFrame first.
+        # The memory spike usually comes from millions of Python Pydantic objects,
+        # not the raw Pandas DataFrame. We'll chunk the output yielding instead.
         df = sf.load_shareprices(variant=variant, market=market).reset_index()
 
         if from_date is not None:
@@ -196,28 +200,42 @@ class SimFinProvider:
             df = df[date_series >= cutoff]
 
         extracted_at = datetime.now(timezone.utc)
-        published = 0
-        skipped_missing_required = 0
-        skipped_invalid = 0
+        
+        total_published = 0
+        total_skipped_missing = 0
+        total_skipped_invalid = 0
+
+        chunk_size = config.simfin_chunk_size
+        chunk_results = []
+
         for _, row in df.iterrows():
             if not self._has_required_share_price_fields(row):
-                skipped_missing_required += 1
+                total_skipped_missing += 1
                 continue
 
             price = self._data_row_to_share_price(row, market, extracted_at)
             if price is not None:
-                yield price
-                published += 1
+                chunk_results.append(price)
+                total_published += 1
             else:
-                skipped_invalid += 1
+                total_skipped_invalid += 1
+            
+            # Yield when chunk reaches target size
+            if len(chunk_results) >= chunk_size:
+                yield chunk_results
+                chunk_results = []
+
+        # Yield any remaining records
+        if chunk_results:
+            yield chunk_results
 
         logger.info(
             "Share price load summary market=%s variant=%s published=%d skipped_missing_required=%d skipped_invalid=%d",
             market,
             variant,
-            published,
-            skipped_missing_required,
-            skipped_invalid,
+            total_published,
+            total_skipped_missing,
+            total_skipped_invalid,
         )
 
     @classmethod
@@ -466,4 +484,3 @@ class SimFinProvider:
                 exc,
             )
             return None
-

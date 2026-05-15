@@ -1,5 +1,6 @@
 simfin:
   apiKey: $ORACULUM_SIMFIN_API_KEY
+  chunkSize: $ORACULUM_SIMFIN_CHUNK_SIZE|500000
 
 kafka:
   brokers: $ORACULUM_KAFKA_BROKERS
@@ -25,9 +26,9 @@ database:
 analyst:
   consumerGroup: oraculum-analyst
   refresh:
-    priceCron: "0 7 * * *"       # every day at 07:00
-    fundamentalsCron: "0 0 * * 0" # every Sunday at midnight
-    tickerCron: "0 0 1 * *"       # 1st of every month at midnight
+    priceCron: "0 7 * * *"
+    fundamentalsCron: "0 0 * * 0"
+    tickerCron: "0 0 1 * *"
   cleanup:
     dataCleanupCron: "$ORACULUM_DATA_CLEANUP_CRON|0 3 * * *"
     dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3

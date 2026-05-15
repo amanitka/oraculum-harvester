@@ -73,6 +73,9 @@ class Config:
         )
         self._source = source
         self.simfin_api_key: str = source.get("simfin.apiKey")
+        self.simfin_chunk_size: int = self._positive_int(
+            source.get("simfin.chunkSize", 500000), "simfin.chunkSize"
+        )
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
@@ -100,5 +103,15 @@ class Config:
             return value
         return [host.strip() for host in str(value).split(",") if host.strip()]
 
+    @staticmethod
+    def _positive_int(value: object, key: str) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{key} must be a positive integer") from exc
+
+        if parsed < 1:
+            raise ValueError(f"{key} must be a positive integer")
+        return parsed
 
 config: Config = Config()

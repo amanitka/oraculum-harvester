@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from sqlmodel import Field, SQLModel, UniqueConstraint
+from sqlalchemy import BigInteger, Column
 
 from analyst.infrastructure.models.base import AuditMixin
 
@@ -36,8 +37,8 @@ class SharePriceDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,m
     close: Optional[float] = None
     adj_close: Optional[float] = None
     
-    volume: Optional[int] = None
-    shares_outstanding: Optional[int] = None
+    volume: Optional[int] = Field(default=None, sa_column=Column(BigInteger()))
+    shares_outstanding: Optional[int] = Field(default=None, sa_column=Column(BigInteger()))
     dividend: Optional[float] = None
     
     extracted_at: datetime
