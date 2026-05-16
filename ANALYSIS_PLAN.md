@@ -234,8 +234,10 @@ Goal: a reproducible development dataset so the analyst has data to read.
   - `get_derived_metrics(ticker, *, template, variant, limit)` —
     `DerivedMetricsRepository`, returns `DerivedMetricsDB` rows from
     `v_derived_metrics` (`ebitda`, `free_cash_flow`, `ncav`,
-    `net_net_working_capital`, `shares_stabilized`, `return_on_equity`,
-    `net_margin`, `revenue`, `net_income`).
+    `net_net_working_capital`, `return_on_capital_employed`, `return_on_equity`,
+    `return_on_assets`, `net_margin`, `current_ratio`, `debt_to_equity`,
+    `inventory_turnover`, `asset_turnover`, `earnings_per_share`,
+    `fcf_per_share`, `revenue`, `net_income`).
 
 Template-specific note: the SimFin `banks` and `insurance` schemas
 omit some columns the `general` formulas rely on, so a subset of
@@ -248,10 +250,10 @@ derived metrics will be `NULL` for those templates (e.g.,
 | Agent        | Primary repositories                                                                                                                          |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | Planner      | `TickerRepository` (sanity check ticker exists)                                                                                               |
-| Fundamentals | `IncomeStatementRepository`, `BalanceSheetRepository`, `DerivedMetricsRepository` (`return_on_equity`, `net_margin`, `revenue`, `net_income`) |
-| CashFlow     | `CashFlowStatementRepository`, `DerivedMetricsRepository` (`free_cash_flow`, `ebitda`)                                                        |
-| Valuation    | `DerivedMetricsRepository` (`ebitda`, `free_cash_flow`, `net_income`, `shares_stabilized`), `SharePriceRepository`                            |
-| Risk         | `BalanceSheetRepository`, `DerivedMetricsRepository` (`ncav`, `net_net_working_capital`), `SharePriceRepository` (volatility)                 |
+| Fundamentals | `IncomeStatementRepository`, `BalanceSheetRepository`, `DerivedMetricsRepository` (`return_on_capital_employed`, `return_on_equity`, `return_on_assets`, `net_margin`, `asset_turnover`, `revenue`, `net_income`) |
+| CashFlow     | `CashFlowStatementRepository`, `DerivedMetricsRepository` (`free_cash_flow`, `ebitda`, `fcf_per_share`)                                       |
+| Valuation    | `DerivedMetricsRepository` (`ebitda`, `free_cash_flow`, `net_income`, `shares_stabilized`, `earnings_per_share`, `fcf_per_share`), `SharePriceRepository` |
+| Risk         | `BalanceSheetRepository`, `DerivedMetricsRepository` (`ncav`, `net_net_working_capital`, `current_ratio`, `debt_to_equity`, `inventory_turnover`), `SharePriceRepository` (volatility)                 |
 | Synthesizer  | (no new I/O; merges prior agent outputs)                                                                                                      |
 
 ---
@@ -269,25 +271,27 @@ curated prompt in `analyst/application/agents/prompts/*.md`):
 2. **FundamentalsAgent** — interprets income statement and balance
    sheet trends. Default variant: `annual` (smooths seasonality,
    multi-year trend visibility). Reads `revenue`, `net_income`,
-   `net_margin`, and `return_on_equity` history from
+   `net_margin`, `return_on_capital_employed`, `return_on_assets`,
+   `asset_turnover`, and `return_on_equity` history from
    `v_derived_metrics` instead of recomputing in Python.
 3. **CashFlowAgent** — cash generation quality, capex intensity, and
    working-capital hygiene. Default variant: `annual`, with a
    `quarterly` cross-check for working-capital swings. Reads
-   `free_cash_flow` and `ebitda` from `v_derived_metrics` and joins
+   `free_cash_flow`, `fcf_per_share`, and `ebitda` from `v_derived_metrics` and joins
    with cash-flow statement details for commentary. For `banks` /
    `insurance` templates, FCF is often `NULL` and the agent must say
    so explicitly instead of fabricating values.
 4. **ValuationAgent** — multiples versus the ticker's own history.
    Default variant: `ttm` (most current snapshot). Computes trailing
-   P/E from `net_income` and `shares_stabilized` vs prices, EV/EBITDA
-   approximation from `ebitda`, FCF yield from `free_cash_flow`. For
+   P/E from `earnings_per_share` (or `net_income` and `shares_stabilized`) vs prices, EV/EBITDA
+   approximation from `ebitda`, FCF yield from `fcf_per_share` (or `free_cash_flow`). For
    `banks` / `insurance` falls back to template-appropriate ratios
    (P/B from balance-sheet equity, ROE history) instead of EV/EBITDA.
    Cross-ticker peer comps remain out of scope.
 5. **RiskAgent** — leverage, liquidity, earnings volatility, red flags.
    Default variant: `quarterly` (more observations for volatility).
-   Uses `ncav` and `net_net_working_capital` from `v_derived_metrics`
+   Uses `ncav`, `net_net_working_capital`, `current_ratio`, `debt_to_equity`,
+   and `inventory_turnover` from `v_derived_metrics`
    as downside-floor sanity checks alongside balance-sheet leverage
    ratios derived from raw rows. NCAV / NNWC are only meaningful for
    the `general` template; the agent skips them for banks / insurance
