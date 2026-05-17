@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import timedelta
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import StatementVariant
 
@@ -28,8 +28,7 @@ class RiskAgent(Agent[RiskOutput]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> RiskOutput:
-        # Risk typically uses quarterly for more granular volatility tracking
+    async def run(self, ctx: AgentContext) -> AgentOutput[RiskOutput]:
         variant: StatementVariant = "quarterly"
 
         balance_sheet_md = ctx.tools.get_balance_sheet_history(
@@ -39,7 +38,6 @@ class RiskAgent(Agent[RiskOutput]):
             ctx.ticker, template=ctx.template, variant=variant
         )
         
-        # Longer window for volatility check (e.g. 1 year)
         start_date = ctx.as_of - timedelta(days=365)
         share_prices_md = ctx.tools.get_price_window(ctx.ticker, start_date, ctx.as_of)
 
@@ -60,4 +58,7 @@ class RiskAgent(Agent[RiskOutput]):
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

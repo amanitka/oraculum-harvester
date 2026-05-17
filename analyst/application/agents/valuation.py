@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import timedelta
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import StatementVariant
 
@@ -27,15 +27,13 @@ class ValuationAgent(Agent[ValuationOutput]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> ValuationOutput:
-        # Valuation typically uses TTM by default
+    async def run(self, ctx: AgentContext) -> AgentOutput[ValuationOutput]:
         variant: StatementVariant = "ttm"
 
         derived_metrics_md = ctx.tools.get_derived_metrics(
             ctx.ticker, template=ctx.template, variant=variant
         )
         
-        # Simple window for recent prices (e.g. last 30 days)
         start_date = ctx.as_of - timedelta(days=30)
         share_prices_md = ctx.tools.get_price_window(ctx.ticker, start_date, ctx.as_of)
 
@@ -55,4 +53,7 @@ class ValuationAgent(Agent[ValuationOutput]):
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

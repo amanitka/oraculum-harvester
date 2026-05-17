@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
@@ -40,18 +40,7 @@ class PlannerAgent(Agent[PlannerPlan]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> PlannerPlan:
-        # The planner is special: it doesn't need LLM completion to resolve the template,
-        # it can just use the provided tool and defaults as per the architectural decisions.
-        # This makes it deterministic and fast.
-        
-        # Real implementation would look like:
-        # template = ctx.tools.resolve_template(ctx.ticker)
-        # However, we'll keep it simple for this phase.
-        
-        # We will use the LLM to structure the output to prove the framework works,
-        # but provide strong hints.
-        
+    async def run(self, ctx: AgentContext) -> AgentOutput[PlannerPlan]:
         profile = ctx.tools.get_ticker_profile(ctx.ticker) or {}
         resolved_template = ctx.tools.resolve_template(ctx.ticker)
         
@@ -67,10 +56,13 @@ class PlannerAgent(Agent[PlannerPlan]):
 
         response = await ctx.llm.complete(
             messages=messages,
-            model="gemini-2.5-flash-lite", # Example lightweight model
+            model="gemini-2.5-flash-lite",
             max_tokens=200,
             temperature=0.0,
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import StatementVariant
 
@@ -27,7 +27,7 @@ class CashFlowAgent(Agent[CashFlowOutput]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> CashFlowOutput:
+    async def run(self, ctx: AgentContext) -> AgentOutput[CashFlowOutput]:
         variant: StatementVariant = ctx.default_variant
 
         cash_flow_md = ctx.tools.get_cash_flow_history(
@@ -53,4 +53,7 @@ class CashFlowAgent(Agent[CashFlowOutput]):
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

@@ -38,3 +38,4 @@ llm:
   model: $ORACULUM_LLM_MODEL|llama-3.3-70b-versatile
   maxTokens: $ORACULUM_LLM_MAX_TOKENS|4096
   temperature: $ORACULUM_LLM_TEMPERATURE|0.2
+  workflowTokenBudget: $ORACULUM_LLM_WORKFLOW_TOKEN_BUDGET|100000

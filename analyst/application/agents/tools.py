@@ -30,7 +30,7 @@ class DataTools(Protocol):
         *,
         template: IncomeStatementTemplate,
         variant: StatementVariant,
-        limit: int = 5,
+        limit: int = 100,
     ) -> str:
         """Returns income statement history formatted as a Markdown table."""
         ...
@@ -41,7 +41,7 @@ class DataTools(Protocol):
         *,
         template: IncomeStatementTemplate,
         variant: StatementVariant,
-        limit: int = 5,
+        limit: int = 100,
     ) -> str:
         """Returns balance sheet history formatted as a Markdown table."""
         ...
@@ -52,7 +52,7 @@ class DataTools(Protocol):
         *,
         template: IncomeStatementTemplate,
         variant: StatementVariant,
-        limit: int = 5,
+        limit: int = 100,
     ) -> str:
         """Returns cash flow history formatted as a Markdown table."""
         ...
@@ -67,7 +67,7 @@ class DataTools(Protocol):
         *,
         template: IncomeStatementTemplate,
         variant: StatementVariant,
-        limit: int = 5,
+        limit: int = 100,
     ) -> str:
         """Returns derived metrics (ratios, per-share data) formatted as a Markdown table."""
         ...

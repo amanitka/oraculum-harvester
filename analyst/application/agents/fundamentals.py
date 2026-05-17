@@ -1,7 +1,7 @@
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import StatementVariant
 
@@ -27,13 +27,7 @@ class FundamentalsAgent(Agent[FundamentalsOutput]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> FundamentalsOutput:
-        # We need the variant chosen by the planner. For now, we assume it's passed or available.
-        # To strictly follow the plan, the orchestrator should pass the chosen variant.
-        # We'll use the default variant from context as a fallback.
-        
-        # In a real run, the Orchestrator would have extracted the variant from Planner Plan 
-        # and injected it into a temporary context or passed it directly.
+    async def run(self, ctx: AgentContext) -> AgentOutput[FundamentalsOutput]:
         variant: StatementVariant = ctx.default_variant 
 
         income_statement_md = ctx.tools.get_income_statement_history(
@@ -63,4 +57,7 @@ class FundamentalsAgent(Agent[FundamentalsOutput]):
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

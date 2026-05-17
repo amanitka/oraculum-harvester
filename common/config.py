@@ -75,6 +75,9 @@ class _LlmConfig:
         self.temperature: float = self._positive_float(
             source.get("llm.temperature", 0.2), "llm.temperature"
         )
+        self.workflow_token_budget: int = self._positive_int(
+            source.get("llm.workflowTokenBudget", 100000), "llm.workflowTokenBudget"
+        )
 
     @staticmethod
     def _positive_int(value: object, key: str) -> int:

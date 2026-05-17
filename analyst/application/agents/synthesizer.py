@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from pydantic import BaseModel, Field
 
-from analyst.application.agents.base import Agent
+from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from analyst.application.analysis.models import AnalysisVerdict
 
@@ -30,7 +30,7 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
     def __init__(self) -> None:
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
-    async def run(self, ctx: AgentContext) -> SynthesizerOutput:
+    async def run(self, ctx: AgentContext) -> AgentOutput[SynthesizerOutput]:
         prior_outputs_json = json.dumps(
             {name: model.model_dump() for name, model in ctx.prior_outputs.items()},
             indent=2,
@@ -51,10 +51,13 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
 
         response = await ctx.llm.complete(
             messages=messages,
-            model="gemini-2.5-pro",  # Use a more powerful model for the final synthesis
+            model="gemini-2.5-pro",
             max_tokens=2048,
             temperature=0.3,
             response_format=self.output_model,
         )
 
-        return self.output_model.model_validate_json(response.text)
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
+        
+        return AgentOutput(result=result, tokens=total_tokens)

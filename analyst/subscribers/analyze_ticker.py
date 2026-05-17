@@ -5,40 +5,14 @@ from uuid import UUID
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
+from analyst.application.agents.context_factory import AgentContextFactory
 from analyst.application.analysis.models import AnalysisResult
+from analyst.application.analysis.workflow import AnalysisWorkflow
 from analyst.infrastructure.repositories.analysis import AnalysisRepository
+from common.llm.litellm_client import LiteLlmClient
 from common.requests.analyze_ticker import AnalyzeTickerRequest
 
 logger = logging.getLogger(__name__)
-
-
-def run_workflow_stub(request: AnalyzeTickerRequest, correlation_id: UUID) -> AnalysisResult:
-    """
-    A stubbed implementation of the analysis workflow.
-
-    This function returns a fixed markdown string to prove the end-to-end
-    wiring of the command path before introducing real LLM calls.
-    """
-    logger.info(f"Running stubbed analysis workflow for {request.ticker}", extra={"cid": correlation_id})
-    now = datetime.now(timezone.utc)
-    analysis_date = request.as_of or date.today()
-
-    return AnalysisResult(
-        correlation_id=correlation_id,
-        ticker=request.ticker,
-        market=request.market,
-        analysis_date=analysis_date,
-        status="completed",
-        report_md="# Stubbed Analysis Report\n\nThis is a placeholder report.",
-        verdict="neutral",
-        conviction=3,
-        key_drivers=["Stubbed driver 1"],
-        key_risks=["Stubbed risk 1"],
-        agent_trace={"stub": "trace"},
-        token_usage=0,
-        created_at=now,  # Note: The repository will set the definitive timestamps.
-        updated_at=now,
-    )
 
 
 def handle_analyze_ticker_request(session: Session, request_data: dict, correlation_id: UUID) -> None:
@@ -48,7 +22,7 @@ def handle_analyze_ticker_request(session: Session, request_data: dict, correlat
     This function orchestrates the analysis lifecycle:
     1. Inserts a 'pending' record into the database.
     2. Marks the record as 'running'.
-    3. Executes the analysis workflow (currently a stub).
+    3. Executes the multi-agent analysis workflow.
     4. Marks the record as 'completed' or 'failed'.
     """
     try:
@@ -78,16 +52,29 @@ def handle_analyze_ticker_request(session: Session, request_data: dict, correlat
         session.commit()
 
         # 3. Run workflow
-        result = run_workflow_stub(request, correlation_id)
+        llm_client = LiteLlmClient()
+        tools = AgentContextFactory(session).create_tools()
+        workflow = AnalysisWorkflow(llm_client, tools)
 
-        # 4. Mark as completed
-        repo.mark_completed(result)
+        # The workflow expects to be run in an async context.
+        # Since this subscriber function is synchronous (based on FastStream setup likely),
+        # we need to use asyncio.run to execute the async workflow.
+        import asyncio
+        result = asyncio.run(workflow.run(request, correlation_id))
+
+        # 4. Mark as completed or failed based on workflow result
+        if result.status == "failed":
+             repo.mark_failed(correlation_id, result.error or "Unknown workflow error")
+        else:
+            repo.mark_completed(result)
+        
         session.commit()
 
-        logger.info(
-            f"Successfully completed analysis for {request.ticker}",
-            extra={"cid": correlation_id, "ticker": request.ticker},
-        )
+        if result.status == "completed":
+            logger.info(
+                f"Successfully completed analysis for {request.ticker}",
+                extra={"cid": correlation_id, "ticker": request.ticker},
+            )
 
     except Exception as e:
         logger.exception(
