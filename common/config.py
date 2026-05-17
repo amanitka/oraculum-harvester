@@ -63,6 +63,42 @@ class _KafkaTopicsConfig:
         )
 
 
+class _LlmConfig:
+    """Settings for the Large Language Model provider."""
+
+    def __init__(self, source: EnvYAML) -> None:
+        self.provider: str = source.get("llm.provider", "groq")
+        self.model: str = source.get("llm.model", "llama-3.3-70b-versatile")
+        self.max_tokens: int = self._positive_int(
+            source.get("llm.maxTokens", 4096), "llm.maxTokens"
+        )
+        self.temperature: float = self._positive_float(
+            source.get("llm.temperature", 0.2), "llm.temperature"
+        )
+
+    @staticmethod
+    def _positive_int(value: object, key: str) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{key} must be a positive integer") from exc
+
+        if parsed < 1:
+            raise ValueError(f"{key} must be a positive integer")
+        return parsed
+
+    @staticmethod
+    def _positive_float(value: object, key: str) -> float:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{key} must be a positive float") from exc
+
+        if parsed < 0.0:
+            raise ValueError(f"{key} must be a positive float")
+        return parsed
+
+
 class Config:
     """Typed accessor over the YAML/env configuration file."""
 
@@ -90,6 +126,7 @@ class Config:
         self.analyst_refresh: _AnalystRefreshConfig = _AnalystRefreshConfig(source)
         self.analyst_cleanup: _AnalystCleanupConfig = _AnalystCleanupConfig(source)
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
+        self.llm: _LlmConfig = _LlmConfig(source)
         
         raw_shared_path = source.get("shared.folderPath", "./data/shared/simfin")
         self.shared_folder_path: Path = _ROOT_DIR / Path(raw_shared_path)

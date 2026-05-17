@@ -32,3 +32,9 @@ analyst:
   cleanup:
     dataCleanupCron: "$ORACULUM_DATA_CLEANUP_CRON|0 3 * * *"
     dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3
+
+llm:
+  provider: $ORACULUM_LLM_PROVIDER|groq
+  model: $ORACULUM_LLM_MODEL|llama-3.3-70b-versatile
+  maxTokens: $ORACULUM_LLM_MAX_TOKENS|4096
+  temperature: $ORACULUM_LLM_TEMPERATURE|0.2
