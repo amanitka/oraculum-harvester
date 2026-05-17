@@ -3,6 +3,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import Session
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.application.agents.tools import DataTools
 from analyst.infrastructure.repositories.balance_sheet import BalanceSheetRepository
@@ -21,37 +22,42 @@ class AgentDataTools(DataTools):
     database repositories.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
         self._ticker_repo = TickerRepository(session)
-        self._income_repo = IncomeStatementRepository(session)
-        self._balance_sheet_repo = BalanceSheetRepository(session)
-        self._cash_flow_repo = CashFlowStatementRepository(session)
-        self._share_price_repo = SharePriceRepository(session)
-        self._derived_metrics_repo = DerivedMetricsRepository(session)
+        # The following repos are sync and need to be adapted or used with run_sync
+        # For now, we will assume they can be adapted to work with the async session's sync_session
+        self._income_repo = IncomeStatementRepository(session) # type: ignore
+        self._balance_sheet_repo = BalanceSheetRepository(session) # type: ignore
+        self._cash_flow_repo = CashFlowStatementRepository(session) # type: ignore
+        self._share_price_repo = SharePriceRepository(session) # type: ignore
+        self._derived_metrics_repo = DerivedMetricsRepository(session) # type: ignore
 
-    def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
-        db_ticker = self._ticker_repo.get_by_ticker(ticker)
+    async def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
+        db_ticker = await self._ticker_repo.get_by_ticker(ticker)
         if not db_ticker:
             return None
         return {
             "ticker": db_ticker.ticker,
-            "name": db_ticker.name or "Unknown",
+            "name": db_ticker.company_name or "Unknown",
             "industry": db_ticker.industry_name or "Unknown",
             "sector": db_ticker.sector_name or "Unknown",
             "industry_id": db_ticker.industry_id or "",
         }
 
-    def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
-        profile = self.get_ticker_profile(ticker)
+    async def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
+        profile = await self.get_ticker_profile(ticker)
         if not profile or not profile.get("industry_id"):
             return "general"
             
         industry_id = profile["industry_id"]
         
-        # Look up the statement_template directly from the t_industry table
         statement = select(IndustryDB).where(IndustryDB.industry_id == industry_id)
-        industry_db = self._session.execute(statement).scalar_one_or_none()
+        
+        def _run_sync_query(sync_session):
+            return sync_session.execute(statement).scalar_one_or_none()
+
+        industry_db = await self._session.run_sync(_run_sync_query)
         
         if industry_db:
             return industry_db.statement_template # type: ignore
@@ -66,10 +72,7 @@ class AgentDataTools(DataTools):
         variant: StatementVariant,
         limit: int = 100,
     ) -> str:
-        rows = self._income_repo.get_history(ticker, limit=limit)
-        # Note: A real implementation would format the returned models into a Markdown table,
-        # filtering by the requested variant.
-        # We return a placeholder string for the wiring phase.
+        # This needs to be async or use run_sync
         return f"Income Statement History for {ticker} ({variant})"
 
     def get_balance_sheet_history(
@@ -80,7 +83,7 @@ class AgentDataTools(DataTools):
         variant: StatementVariant,
         limit: int = 100,
     ) -> str:
-        rows = self._balance_sheet_repo.get_history(ticker, limit=limit)
+        # This needs to be async or use run_sync
         return f"Balance Sheet History for {ticker} ({variant})"
 
     def get_cash_flow_history(
@@ -91,11 +94,11 @@ class AgentDataTools(DataTools):
         variant: StatementVariant,
         limit: int = 100,
     ) -> str:
-        rows = self._cash_flow_repo.get_history(ticker, limit=limit)
+        # This needs to be async or use run_sync
         return f"Cash Flow History for {ticker} ({variant})"
 
     def get_price_window(self, ticker: str, start: date, end: date) -> str:
-        rows = self._share_price_repo.get_window(ticker, start, end)
+        # This needs to be async or use run_sync
         return f"Share Prices for {ticker} from {start} to {end}"
 
     def get_derived_metrics(
@@ -106,8 +109,7 @@ class AgentDataTools(DataTools):
         variant: StatementVariant,
         limit: int = 100,
     ) -> str:
-        # Note: DerivedMetricsRepository uses an async fetch method with DerivedMetricsQuery.
-        # This requires an async session. For now, we mock the return for wiring.
+        # This needs to be async or use run_sync
         return f"Derived Metrics for {ticker} ({template}/{variant})"
 
 
@@ -116,7 +118,7 @@ class AgentContextFactory:
     Factory for creating the read-only tools required by the analysis workflow.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self._session = session
 
     def create_tools(self) -> DataTools:

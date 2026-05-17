@@ -41,8 +41,8 @@ class PlannerAgent(Agent[PlannerPlan]):
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, ctx: AgentContext) -> AgentOutput[PlannerPlan]:
-        profile = ctx.tools.get_ticker_profile(ctx.ticker) or {}
-        resolved_template = ctx.tools.resolve_template(ctx.ticker)
+        profile = await ctx.tools.get_ticker_profile(ctx.ticker) or {}
+        resolved_template = await ctx.tools.resolve_template(ctx.ticker)
         
         messages = [
             {"role": "system", "content": self.system_prompt},

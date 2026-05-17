@@ -12,6 +12,7 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from sqlmodel import select
 
 from common.config import config
 from common.messaging.kafka_publisher import KafkaRequestPublisher
@@ -30,6 +31,9 @@ from application.refresh_request_factory import (
 from application.refresh_service import RefreshService
 from application.analysis_trigger import AnalysisTrigger
 from infrastructure.repositories.analysis import AnalysisRepository
+from analyst.infrastructure.repositories.ticker import TickerRepository
+from analyst.infrastructure.repositories.market import MarketRepository
+from analyst.infrastructure.models.ticker import TickerDB
 
 logger = logging.getLogger(__name__)
 
@@ -242,20 +246,42 @@ def _render_analysis_tab() -> None:
     """Render the AI Analysis controls and results."""
     run_col, list_col = st.columns([1, 2])
 
+    engine = create_engine(config.database_url)
+
     with run_col:
         st.subheader("Run new analysis")
+        with Session(engine) as session:
+            market_repo = MarketRepository(session)
+            
+            markets = market_repo.list_all_markets()
+            market_options = [m.market_id for m in markets] if markets else ["us"]
+
         with st.form("run_analysis_form"):
-            ticker = st.text_input("Ticker symbol", placeholder="AAPL")
-            market = st.text_input("Market", value="us")
+            selected_market = st.selectbox("Market", options=market_options)
+            
+            # Use st.selectbox if tickers exist for the selected market, otherwise text input
+            with Session(engine) as session:
+                # Need to resolve selected_market inside the form block to be dynamic if possible, 
+                # but Streamlit form widgets evaluation order makes this tricky without session_state.
+                # A simple fix is to fetch all tickers for now.
+                stmt = select(TickerDB).where(TickerDB.market == selected_market).order_by(TickerDB.ticker.asc())
+                tickers = session.execute(stmt).scalars().all()
+                ticker_options = [t.ticker.upper() for t in tickers] if tickers else []
+
+            if ticker_options:
+                selected_ticker = st.selectbox("Ticker symbol", options=ticker_options)
+            else:
+                selected_ticker = st.text_input("Ticker symbol", placeholder="AAPL")
+            
             is_submitted = st.form_submit_button("Analyze")
 
         if is_submitted:
-            if not ticker:
+            if not selected_ticker:
                 st.error("Please provide a ticker.")
             else:
                 trigger = AnalysisTrigger(KafkaRequestPublisher())
                 try:
-                    cid = trigger.trigger_analysis(ticker, market)
+                    cid = trigger.trigger_analysis(selected_ticker, selected_market) # type: ignore
                     st.success(f"Analysis triggered! ID: {cid}")
                 except Exception as e:
                     st.error(f"Failed to trigger analysis: {e}")
@@ -263,8 +289,6 @@ def _render_analysis_tab() -> None:
     with list_col:
         st.subheader("Recent analyses")
         
-        # We need a db session to read from the repository
-        engine = create_engine(config.database_url)
         with Session(engine) as session:
             repo = AnalysisRepository(session)
             

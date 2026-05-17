@@ -15,6 +15,7 @@ from analyst.application.analysis.models import AnalysisResult
 from common.config import config
 from common.llm.base import LlmClient
 from common.requests.analyze_ticker import AnalyzeTickerRequest
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 

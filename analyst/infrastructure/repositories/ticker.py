@@ -31,7 +31,7 @@ class TickerRepository:
         domain model overwrites the corresponding column. `created_at`
         is preserved on update; `updated_at` is refreshed.
         """
-        existing = await self._find(ticker.ticker, ticker.market)
+        existing = await self.get_by_ticker(ticker.ticker, ticker.market)
         payload = ticker.model_dump()
         if existing is None:
             row = TickerDB(**payload)
@@ -45,10 +45,16 @@ class TickerRepository:
         await self._session.refresh(row)
         return row
 
-    async def _find(self, ticker: str, market: str) -> Optional[TickerDB]:
+    async def get_by_ticker(self, ticker: str, market: str = "us") -> Optional[TickerDB]:
         stmt = select(TickerDB).where(
             TickerDB.ticker == ticker,
             TickerDB.market == market,
         )
         result = await self._session.exec(stmt)
         return result.first()
+
+    async def list_all_tickers(self) -> list[TickerDB]:
+        """Fetch all tickers from the database."""
+        statement = select(TickerDB).order_by(TickerDB.ticker.asc())
+        result = await self._session.exec(statement)
+        return result.all()

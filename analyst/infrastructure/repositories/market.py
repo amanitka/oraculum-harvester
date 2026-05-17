@@ -36,3 +36,8 @@ class MarketRepository:
         )
 
         self._session.execute(stmt)
+
+    def list_all_markets(self) -> list[MarketDB]:
+        """Fetch all markets from the database."""
+        statement = select(MarketDB).order_by(MarketDB.market_id.asc())
+        return self._session.execute(statement).scalars().all()

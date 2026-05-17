@@ -13,11 +13,11 @@ class DataTools(Protocol):
     agents have no persistence concerns.
     """
 
-    def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
+    async def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
         """Fetch basic ticker information (industry, sector, name)."""
         ...
 
-    def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
+    async def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
         """
         Maps a ticker's industry/sector to a specific SimFin statement template.
         Falls back to 'general' if unknown.
