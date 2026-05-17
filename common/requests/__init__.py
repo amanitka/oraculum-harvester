@@ -1,10 +1,10 @@
-"""Discriminated union of all harvester requests + a parser."""
+"""Pydantic schemas for the uniform command topic."""
 
 from __future__ import annotations
 
 from typing import Annotated, Union
 
-from pydantic import Field, TypeAdapter, ValidationError
+from pydantic import Field
 
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
@@ -12,7 +12,13 @@ from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
+from common.requests.fetch_market import FetchMarketRequest
+from common.requests.fetch_industry import FetchIndustryRequest
+from common.requests.analyze_ticker import AnalyzeTickerRequest
 
+# Discriminated union of all possible refresh requests.
+# Adding a new command means adding it to this tuple so FastStream
+# correctly deserializes the JSON payload into the matching model.
 AnyRequest = Annotated[
     Union[
         FetchTickerRequest,
@@ -20,23 +26,12 @@ AnyRequest = Annotated[
         FetchBalanceSheetRequest,
         FetchCashFlowStatementRequest,
         FetchSharePriceRequest,
+        FetchMarketRequest,
+        FetchIndustryRequest,
+        AnalyzeTickerRequest,
     ],
     Field(discriminator="request_type"),
 ]
-
-_ADAPTER: TypeAdapter[AnyRequest] = TypeAdapter(AnyRequest)
-
-
-def parse_request(payload: bytes | str | dict) -> Request:
-    """Validate an incoming payload against the discriminated union.
-
-    Raises `pydantic.ValidationError` on bad shapes so callers can treat
-    invalid payloads as poison and route them to logs/DLQ.
-    """
-    if isinstance(payload, (bytes, str)):
-        return _ADAPTER.validate_json(payload)
-    return _ADAPTER.validate_python(payload)
-
 
 __all__ = [
     "AnyRequest",
@@ -45,7 +40,8 @@ __all__ = [
     "FetchIncomeStatementRequest",
     "FetchSharePriceRequest",
     "FetchTickerRequest",
+    "FetchMarketRequest",
+    "FetchIndustryRequest",
+    "AnalyzeTickerRequest",
     "Request",
-    "ValidationError",
-    "parse_request",
 ]

@@ -22,11 +22,13 @@ class KafkaRequestPublisher:
             "fetch_ticker": config.harvester_request_topic,
             "fetch_statements": config.harvester_request_topic,
             "fetch_share_prices": config.harvester_request_topic,
+            "fetch_market": config.harvester_request_topic,
+            "fetch_industry": config.harvester_request_topic,
             # Analyst requests go to the analyst topic
             "analyze_ticker": config.topics.analyst_request,
         }
 
-    def publish_request(self, request: Request, key: str | UUID) -> None:
+    def publish_request(self, request: Request, key: str | UUID | None = None) -> None:
         """
         Publishes a request to the appropriate Kafka topic.
 
@@ -44,7 +46,19 @@ class KafkaRequestPublisher:
         async def _publish():
             broker = create_broker()
             async with broker:
-                await broker.publish(request, topic=topic, key=str(key))
+                await broker.publish(request, topic=topic, key=str(key) if key else None)
 
         import asyncio
         asyncio.run(_publish())
+
+    async def publish(self, request: Request) -> None:
+        """
+        Async publisher to satisfy the RefreshRequestPublisher protocol used by RefreshService.
+        """
+        topic = self._topic_map.get(request.request_type)
+        if not topic:
+            raise ValueError(f"No topic mapping found for request type: {request.request_type}")
+
+        broker = create_broker()
+        async with broker:
+            await broker.publish(request, topic=topic)

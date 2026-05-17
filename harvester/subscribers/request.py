@@ -18,9 +18,13 @@ from common.requests import (
     FetchIncomeStatementRequest,
     FetchSharePriceRequest,
     FetchTickerRequest,
+    FetchMarketRequest,
+    FetchIndustryRequest,
 )
 from harvester.app import broker
-from harvester.providers import SimFinProvider
+from harvester.providers.simfin_provider import SimFinProvider
+from harvester.providers.market import MarketProvider
+from harvester.providers.industry import IndustryProvider
 from harvester.services import (
     BalanceSheetService,
     CashFlowStatementService,
@@ -28,6 +32,8 @@ from harvester.services import (
     SharePriceService,
     TickerService,
 )
+from harvester.services.market import MarketService
+from harvester.services.industry import IndustryService
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,9 @@ _income_service = IncomeStatementService(_provider)
 _balance_service = BalanceSheetService(_provider)
 _cash_flow_service = CashFlowStatementService(_provider)
 _share_price_service = SharePriceService(_provider)
+
+_market_service = MarketService(MarketProvider())
+_industry_service = IndustryService(IndustryProvider())
 
 
 @broker.subscriber(
@@ -57,3 +66,7 @@ async def on_request(request: AnyRequest) -> None:
             await _cash_flow_service.fetch_and_publish(request)
         case FetchSharePriceRequest():
             await _share_price_service.fetch_and_publish(request)
+        case FetchMarketRequest():
+            await _market_service.fetch_and_publish(request)
+        case FetchIndustryRequest():
+            await _industry_service.fetch_and_publish(request)

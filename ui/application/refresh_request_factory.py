@@ -10,6 +10,8 @@ from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
+from common.requests.fetch_market import FetchMarketRequest
+from common.requests.fetch_industry import FetchIndustryRequest
 
 StatementVariant: TypeAlias = Literal["annual", "quarterly", "ttm"]
 StatementTemplate: TypeAlias = Literal["general", "banks", "insurance"]
@@ -21,6 +23,16 @@ STATEMENT_TEMPLATES: tuple[StatementTemplate, ...] = ("general", "banks", "insur
 def build_ticker_request(market: str) -> FetchTickerRequest:
     """Build a ticker refresh request."""
     return FetchTickerRequest(market=_normalize_market(market))
+
+
+def build_market_request() -> FetchMarketRequest:
+    """Build a market refresh request."""
+    return FetchMarketRequest()
+
+
+def build_industry_request() -> FetchIndustryRequest:
+    """Build an industry refresh request."""
+    return FetchIndustryRequest()
 
 
 def build_share_price_request(

@@ -11,6 +11,8 @@ kafka:
     cashFlowStatement: oraculum.cash_flow_statement
     sharePriceBatch: oraculum.share_price_batch
     analystRequest: oraculum.analyst.request
+    market: oraculum.market
+    industry: oraculum.industry
 
 shared:
   folderPath: $ORACULUM_SHARED_FOLDER_PATH|./data/shared

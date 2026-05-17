@@ -2,6 +2,7 @@ from datetime import date
 from typing import Protocol
 
 from sqlalchemy.orm import Session
+from sqlmodel import select
 
 from analyst.application.agents.tools import DataTools
 from analyst.infrastructure.repositories.balance_sheet import BalanceSheetRepository
@@ -10,6 +11,7 @@ from analyst.infrastructure.repositories.derived_metrics import DerivedMetricsRe
 from analyst.infrastructure.repositories.income_statement import IncomeStatementRepository
 from analyst.infrastructure.repositories.share_price import SharePriceRepository
 from analyst.infrastructure.repositories.ticker import TickerRepository
+from analyst.infrastructure.models.industry import IndustryDB
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
 
@@ -20,6 +22,7 @@ class AgentDataTools(DataTools):
     """
 
     def __init__(self, session: Session):
+        self._session = session
         self._ticker_repo = TickerRepository(session)
         self._income_repo = IncomeStatementRepository(session)
         self._balance_sheet_repo = BalanceSheetRepository(session)
@@ -36,24 +39,22 @@ class AgentDataTools(DataTools):
             "name": db_ticker.name or "Unknown",
             "industry": db_ticker.industry_name or "Unknown",
             "sector": db_ticker.sector_name or "Unknown",
+            "industry_id": db_ticker.industry_id or "",
         }
 
     def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
-        # In a real implementation, this would map the industry/sector string
-        # from the ticker profile to one of the three templates.
-        # This mapping should ideally reside in a configuration or a dedicated mapper class.
-        
-        # For this phase, a simple static mapping or a default to "general" is sufficient
-        # to prove the wiring works.
         profile = self.get_ticker_profile(ticker)
-        if not profile:
+        if not profile or not profile.get("industry_id"):
             return "general"
             
-        industry = profile.get("industry", "").lower()
-        if "bank" in industry:
-            return "banks"
-        if "insurance" in industry:
-            return "insurance"
+        industry_id = profile["industry_id"]
+        
+        # Look up the statement_template directly from the t_industry table
+        statement = select(IndustryDB).where(IndustryDB.industry_id == industry_id)
+        industry_db = self._session.execute(statement).scalar_one_or_none()
+        
+        if industry_db:
+            return industry_db.statement_template # type: ignore
             
         return "general"
 

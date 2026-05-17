@@ -1,0 +1,52 @@
+"""SimFin industry data provider."""
+
+import logging
+from datetime import datetime, timezone
+from typing import Iterator
+
+import simfin as sf
+import pandas as pd
+
+from common.config import config
+from common.domain.industry import Industry
+
+logger = logging.getLogger(__name__)
+
+
+class IndustryProvider:
+    """Fetches industry metadata from SimFin."""
+
+    def __init__(self) -> None:
+        cache_path = config.harvester_data_path / "simfin_cache"
+        sf.set_api_key(config.simfin_api_key)
+        cache_path.mkdir(parents=True, exist_ok=True)
+        sf.set_data_dir(str(cache_path))
+
+    def fetch_industries(self) -> Iterator[Industry]:
+        """Yield validated `Industry` records."""
+        logger.info("Loading industries from SimFin")
+        df = sf.load_industries().reset_index()
+        extracted_at = datetime.now(timezone.utc)
+        
+        published = 0
+        skipped = 0
+
+        for _, row in df.iterrows():
+            industry = self._data_row_to_industry(row, extracted_at)
+            if industry:
+                published += 1
+                yield industry
+            else:
+                skipped += 1
+                
+        logger.info(f"Industry load summary: published={published} skipped={skipped}")
+
+    @staticmethod
+    def _data_row_to_industry(row: pd.Series, extracted_at: datetime) -> Industry | None:
+        try:
+            payload = row.to_dict()
+            payload["extracted_at"] = extracted_at
+            return Industry.model_validate(payload)
+        except Exception as exc:
+            logger.warning(f"Skipping industry row {row.get('IndustryId', 'Unknown')}: {exc}")
+            return None

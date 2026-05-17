@@ -24,6 +24,8 @@ from application.refresh_request_factory import (
     build_income_statement_request,
     build_share_price_request,
     build_ticker_request,
+    build_market_request,
+    build_industry_request,
 )
 from application.refresh_service import RefreshService
 from application.analysis_trigger import AnalysisTrigger
@@ -74,6 +76,28 @@ def _render_ticker_form() -> None:
     except Exception:
         logger.exception("Failed to queue ticker refresh")
         st.error("Failed to queue ticker refresh. Check logs for details.")
+
+
+def _render_metadata_form() -> None:
+    """Render the market and industry refresh form."""
+    st.subheader("Metadata refresh (Markets & Industries)")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Queue market refresh", use_container_width=True):
+            try:
+                request = build_market_request()
+                _trigger_request(request)
+            except Exception:
+                logger.exception("Failed to queue market refresh")
+                st.error("Failed to queue market refresh. Check logs.")
+    with col2:
+        if st.button("Queue industry refresh", use_container_width=True):
+            try:
+                request = build_industry_request()
+                _trigger_request(request)
+            except Exception:
+                logger.exception("Failed to queue industry refresh")
+                st.error("Failed to queue industry refresh. Check logs.")
 
 
 def _render_share_price_form() -> None:
@@ -175,8 +199,9 @@ def _render_refresh_tab() -> None:
         "Use these controls to queue refresh requests to Kafka. "
         "The harvester consumes them from the configured request topic."
     )
-    ticker_tab, share_price_tab, income_tab, balance_tab, cash_flow_tab = st.tabs(
+    metadata_tab, ticker_tab, share_price_tab, income_tab, balance_tab, cash_flow_tab = st.tabs(
         [
+            "Metadata",
             "Ticker",
             "Share Price",
             "Income Statement",
@@ -184,6 +209,8 @@ def _render_refresh_tab() -> None:
             "Cash Flow",
         ]
     )
+    with metadata_tab:
+        _render_metadata_form()
     with ticker_tab:
         _render_ticker_form()
     with share_price_tab:

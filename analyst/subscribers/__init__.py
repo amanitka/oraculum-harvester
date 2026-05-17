@@ -6,3 +6,6 @@ evaluation.
 """
 
 import analyst.subscribers.data_file_ready  # noqa: F401
+import analyst.subscribers.analyze_ticker  # noqa: F401
+import analyst.subscribers.market  # noqa: F401
+import analyst.subscribers.industry  # noqa: F401

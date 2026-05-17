@@ -58,6 +58,8 @@ class _KafkaTopicsConfig:
         self.cash_flow_statement: str = source.get("kafka.topics.cashFlowStatement")
         self.share_price_batch: str = source.get("kafka.topics.sharePriceBatch")
         self.analyst_request: str = source.get("kafka.topics.analystRequest")
+        self.market: str = source.get("kafka.topics.market")
+        self.industry: str = source.get("kafka.topics.industry")
         self.data_file_ready: str = source.get(
             "kafka.topics.dataFileReady", "oraculum.data_file_ready"
         )
