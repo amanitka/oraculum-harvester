@@ -18,10 +18,12 @@ class KafkaRequestPublisher:
 
     def __init__(self):
         self._topic_map = {
-            "fetch_ticker": config.kafka.topics.harvester_request,
-            "fetch_statements": config.kafka.topics.harvester_request,
-            "fetch_share_prices": config.kafka.topics.harvester_request,
-            "analyze_ticker": config.kafka.topics.analyst_request,
+            # Harvester requests go to a single topic
+            "fetch_ticker": config.harvester_request_topic,
+            "fetch_statements": config.harvester_request_topic,
+            "fetch_share_prices": config.harvester_request_topic,
+            # Analyst requests go to the analyst topic
+            "analyze_ticker": config.topics.analyst_request,
         }
 
     def publish_request(self, request: Request, key: str | UUID) -> None:

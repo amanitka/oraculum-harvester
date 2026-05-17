@@ -6,10 +6,15 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import date
+from uuid import UUID
 
 import streamlit as st
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from common.config import config
+from common.messaging.kafka_publisher import KafkaRequestPublisher
 from common.requests.base import Request
 from application.refresh_request_factory import (
     STATEMENT_TEMPLATES,
@@ -21,7 +26,8 @@ from application.refresh_request_factory import (
     build_ticker_request,
 )
 from application.refresh_service import RefreshService
-from infrastructure.kafka_refresh_request_publisher import KafkaRefreshRequestPublisher
+from application.analysis_trigger import AnalysisTrigger
+from infrastructure.repositories.analysis import AnalysisRepository
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +43,10 @@ def _run_awaitable(awaitable: Awaitable[None]) -> None:
 
 def _trigger_request(request: Request) -> None:
     """Publish one refresh request and render the result in the UI."""
-    service = RefreshService(KafkaRefreshRequestPublisher())
+    service = RefreshService(KafkaRequestPublisher())
     with st.spinner("Publishing request to Kafka..."):
         _run_awaitable(service.trigger(request))
-    st.success(
-        f"Published `{request.request_type}` to `{config.harvester_request_topic}`."
-    )
+    st.success(f"Published `{request.request_type}`.")
     st.code(
         "\n".join(
             [
@@ -207,16 +211,117 @@ def _render_refresh_tab() -> None:
         )
 
 
+def _render_analysis_tab() -> None:
+    """Render the AI Analysis controls and results."""
+    run_col, list_col = st.columns([1, 2])
+
+    with run_col:
+        st.subheader("Run new analysis")
+        with st.form("run_analysis_form"):
+            ticker = st.text_input("Ticker symbol", placeholder="AAPL")
+            market = st.text_input("Market", value="us")
+            is_submitted = st.form_submit_button("Analyze")
+
+        if is_submitted:
+            if not ticker:
+                st.error("Please provide a ticker.")
+            else:
+                trigger = AnalysisTrigger(KafkaRequestPublisher())
+                try:
+                    cid = trigger.trigger_analysis(ticker, market)
+                    st.success(f"Analysis triggered! ID: {cid}")
+                except Exception as e:
+                    st.error(f"Failed to trigger analysis: {e}")
+
+    with list_col:
+        st.subheader("Recent analyses")
+        
+        # We need a db session to read from the repository
+        engine = create_engine(config.database_url)
+        with Session(engine) as session:
+            repo = AnalysisRepository(session)
+            
+            # Simple auto-refresh if there are running tasks
+            if repo.get_running_count() > 0:
+                st.rerun() # This will cause the page to reload continuously while tasks are running
+
+            analyses = repo.list_recent(limit=20)
+
+            if not analyses:
+                st.info("No analyses found.")
+                return
+
+            # Display as a table
+            data = []
+            for a in analyses:
+                data.append(
+                    {
+                        "ID": str(a.correlation_id),
+                        "Ticker": f"{a.ticker.upper()} ({a.market})",
+                        "Status": a.status,
+                        "Verdict": a.verdict.upper() if a.verdict else "-",
+                        "Date": a.created_at.strftime("%Y-%m-%d %H:%M"),
+                    }
+                )
+            df = pd.DataFrame(data)
+            
+            # Use dataframe selection to allow viewing details
+            event = st.dataframe(
+                df,
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="single-row",
+            )
+            
+            selected_rows = event.selection.rows
+            if selected_rows:
+                selected_idx = selected_rows[0]
+                selected_id = UUID(df.iloc[selected_idx]["ID"])
+                
+                # Fetch full details
+                detail = repo.get_by_correlation_id(selected_id)
+                if detail:
+                    st.markdown("---")
+                    st.subheader(f"Analysis for {detail.ticker.upper()}")
+                    
+                    status_color = {
+                        "completed": "green",
+                        "failed": "red",
+                        "running": "blue",
+                        "pending": "gray"
+                    }.get(detail.status, "gray")
+                    
+                    st.markdown(f"**Status:** :{status_color}[{detail.status.upper()}]")
+                    
+                    if detail.status == "completed":
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Verdict", detail.verdict.upper())
+                        with col2:
+                            st.metric("Conviction", f"{detail.conviction} / 5")
+                        
+                        st.markdown("### Report")
+                        st.markdown(detail.report_md)
+                        
+                        if detail.payload:
+                            with st.expander("Show Traces & Drivers"):
+                                st.json(detail.payload)
+                                
+                    elif detail.status == "failed":
+                        st.error(detail.error or "Unknown error")
+
+
 def main() -> None:
     """Render the Streamlit UI entrypoint."""
     st.set_page_config(page_title="Oraculum Operations", layout="wide")
     st.title("Oraculum Operations")
 
-    refresh_tab, analysis_tab = st.tabs(["Refresh", "Analysis (coming soon)"])
+    refresh_tab, analysis_tab = st.tabs(["Refresh", "Analysis"])
     with refresh_tab:
         _render_refresh_tab()
     with analysis_tab:
-        st.info("Analysis output view is not implemented yet.")
+        _render_analysis_tab()
 
 
 if __name__ == "__main__":

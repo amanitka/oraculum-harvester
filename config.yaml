@@ -34,8 +34,8 @@ analyst:
     dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3
 
 llm:
-  provider: $ORACULUM_LLM_PROVIDER|groq
-  model: $ORACULUM_LLM_MODEL|llama-3.3-70b-versatile
+  provider: $ORACULUM_LLM_PROVIDER|gemini
+  model: $ORACULUM_LLM_MODEL|gemini-2.5-flash
   maxTokens: $ORACULUM_LLM_MAX_TOKENS|4096
   temperature: $ORACULUM_LLM_TEMPERATURE|0.2
   workflowTokenBudget: $ORACULUM_LLM_WORKFLOW_TOKEN_BUDGET|100000

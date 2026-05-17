@@ -1,7 +1,7 @@
 """add_t_analysis
 
 Revision ID: 0004
-Revises: 0003
+Revises: 0003_fix_share_price_types
 Create Date: 2024-08-01 12:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '0004'
-down_revision = '0003'
+down_revision = '0003_fix_share_price_types'
 branch_labels = None
 depends_on = None
 
