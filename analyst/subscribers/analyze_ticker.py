@@ -12,7 +12,7 @@ from analyst.application.analysis.models import AnalysisResult
 from analyst.application.analysis.workflow import AnalysisWorkflow
 from analyst.infrastructure.repositories.analysis import AnalysisRepository
 from common.config import config
-from common.llm.litellm_client import LiteLlmClient
+from common.llm.openai_client import OpenAiClient
 from common.requests.analyze_ticker import AnalyzeTickerRequest
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ async def handle_analyze_ticker_request(request: AnalyzeTickerRequest, session: 
         await session.run_sync(_run_sync_repo_ops)
 
         # Now, for the async workflow, we use the async session
-        llm_client = LiteLlmClient()
+        llm_client = OpenAiClient()
         tools = AgentContextFactory(session).create_tools() # Pass the async session
         workflow = AnalysisWorkflow(llm_client, tools)
         result = await workflow.run(request, correlation_id)

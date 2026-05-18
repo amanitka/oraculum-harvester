@@ -69,8 +69,10 @@ class _LlmConfig:
     """Settings for the Large Language Model provider."""
 
     def __init__(self, source: EnvYAML) -> None:
-        self.provider: str = source.get("llm.provider", "groq")
-        self.model: str = source.get("llm.model", "llama-3.3-70b-versatile")
+        self.provider: str = source.get("llm.provider", "openai")
+        self.model: str = source.get("llm.model", "gemini-1.5-flash-latest")
+        self.api_key: str = source.get("llm.api_key")
+        self.api_base: str = source.get("llm.api_base", "https://generativelanguage.googleapis.com/v1beta/")
         self.max_tokens: int = self._positive_int(
             source.get("llm.maxTokens", 4096), "llm.maxTokens"
         )

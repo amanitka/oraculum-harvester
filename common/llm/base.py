@@ -18,6 +18,10 @@ class LlmResponse(BaseModel):
     latency_ms: int = Field(
         default=0, description="Time taken to generate the response in milliseconds."
     )
+    finish_reason: str | None = Field(
+        default=None,
+        description="Provider-specific finish reason for the completion, when available.",
+    )
 
 
 class LlmClient(ABC):

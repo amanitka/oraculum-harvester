@@ -57,7 +57,7 @@ class PlannerAgent(Agent[PlannerPlan]):
         response = await ctx.llm.complete(
             messages=messages,
             model="gemini-2.5-flash-lite",
-            max_tokens=200,
+            max_tokens=300,
             temperature=0.0,
             response_format=self.output_model,
         )
