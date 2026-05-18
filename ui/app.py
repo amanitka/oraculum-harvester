@@ -250,39 +250,54 @@ def _render_analysis_tab() -> None:
 
     with run_col:
         st.subheader("Run new analysis")
+        
+        # We need a session to query markets and tickers
         with Session(engine) as session:
-            market_repo = MarketRepository(session)
-            
-            markets = market_repo.list_all_markets()
-            market_options = [m.market_id for m in markets] if markets else ["us"]
+            # Get distinct markets from the ticker table directly
+            # This ensures we only show markets that actually have tickers
+            stmt_markets = select(TickerDB.market).distinct().order_by(TickerDB.market)
+            available_markets = session.execute(stmt_markets).scalars().all()
+            market_options = list(available_markets) if available_markets else ["us"]
 
+            # The market selection happens *outside* the form so it triggers a re-render immediately
+            # allowing the ticker selectbox to update its options.
+            selected_market = st.selectbox(
+                "Filter by Market (Optional)", 
+                options=["All"] + market_options, # Provide an "All" option
+                index=1 if "us" in market_options else 0 # Default to "us" if present
+            )
+
+            # Query tickers based on the selected market
+            stmt_tickers = select(TickerDB).order_by(TickerDB.ticker.asc())
+            if selected_market != "All":
+                stmt_tickers = stmt_tickers.where(TickerDB.market == selected_market)
+            
+            tickers = session.execute(stmt_tickers).scalars().all()
+            
+            # Create a dictionary mapping the display string to the actual ticker object
+            # e.g. "AAPL - Apple Inc." -> TickerDB
+            ticker_options_map = {
+                f"{t.ticker.upper()} - {t.company_name or 'Unknown'}": t 
+                for t in tickers
+            }
+
+        # Use a regular text input for the ticker, it's more reliable than dynamic selectboxes in forms
         with st.form("run_analysis_form"):
-            selected_market = st.selectbox("Market", options=market_options)
-            
-            # Use st.selectbox if tickers exist for the selected market, otherwise text input
-            with Session(engine) as session:
-                # Need to resolve selected_market inside the form block to be dynamic if possible, 
-                # but Streamlit form widgets evaluation order makes this tricky without session_state.
-                # A simple fix is to fetch all tickers for now.
-                stmt = select(TickerDB).where(TickerDB.market == selected_market).order_by(TickerDB.ticker.asc())
-                tickers = session.execute(stmt).scalars().all()
-                ticker_options = [t.ticker.upper() for t in tickers] if tickers else []
-
-            if ticker_options:
-                selected_ticker = st.selectbox("Ticker symbol", options=ticker_options)
-            else:
-                selected_ticker = st.text_input("Ticker symbol", placeholder="AAPL")
-            
+            final_ticker = st.text_input("Ticker symbol", placeholder="AAPL")
             is_submitted = st.form_submit_button("Analyze")
 
         if is_submitted:
-            if not selected_ticker:
+            if not final_ticker:
                 st.error("Please provide a ticker.")
             else:
                 trigger = AnalysisTrigger(KafkaRequestPublisher())
                 try:
-                    cid = trigger.trigger_analysis(selected_ticker, selected_market) # type: ignore
-                    st.success(f"Analysis triggered! ID: {cid}")
+                    # Clean inputs before sending
+                    clean_ticker = final_ticker.strip().upper()
+                    clean_market = selected_market if selected_market != "All" else "us"
+                    
+                    cid = trigger.trigger_analysis(clean_ticker, clean_market)
+                    st.success(f"Analysis triggered for {clean_ticker}! ID: {cid}")
                 except Exception as e:
                     st.error(f"Failed to trigger analysis: {e}")
 
@@ -292,9 +307,10 @@ def _render_analysis_tab() -> None:
         with Session(engine) as session:
             repo = AnalysisRepository(session)
             
-            # Simple auto-refresh if there are running tasks
             if repo.get_running_count() > 0:
-                st.rerun() # This will cause the page to reload continuously while tasks are running
+                import time
+                time.sleep(2)
+                st.rerun() 
 
             analyses = repo.list_recent(limit=20)
 
@@ -302,7 +318,6 @@ def _render_analysis_tab() -> None:
                 st.info("No analyses found.")
                 return
 
-            # Display as a table
             data = []
             for a in analyses:
                 data.append(
@@ -316,7 +331,6 @@ def _render_analysis_tab() -> None:
                 )
             df = pd.DataFrame(data)
             
-            # Use dataframe selection to allow viewing details
             event = st.dataframe(
                 df,
                 use_container_width=True,
@@ -330,7 +344,6 @@ def _render_analysis_tab() -> None:
                 selected_idx = selected_rows[0]
                 selected_id = UUID(df.iloc[selected_idx]["ID"])
                 
-                # Fetch full details
                 detail = repo.get_by_correlation_id(selected_id)
                 if detail:
                     st.markdown("---")

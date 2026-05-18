@@ -32,7 +32,7 @@ class AnalysisTrigger:
             ticker=ticker.upper().strip(),
             market=market.lower().strip(),
             as_of=date.today(),
-            # correlation_id is set by the publisher from the message key
+            correlation_id=correlation_id
         )
 
         logger.info(
