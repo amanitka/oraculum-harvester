@@ -1,6 +1,6 @@
 """Create daily market signals SQL view.
 
-Revision ID: 0006_daily_market_signals_view
+Revision ID: 0006_daily_market_signals
 Revises: 0005
 Create Date: 2026-05-19 00:00:00.000000
 
@@ -11,7 +11,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0006_create_daily_market_signals_view"
+revision: str = "0006_daily_market_signals"
 down_revision: Union[str, Sequence[str], None] = "0005"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None

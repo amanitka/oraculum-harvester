@@ -16,7 +16,7 @@ def _load_migration() -> ModuleType:
             / "0006_daily_market_signals_view.py"
     )
     spec = importlib.util.spec_from_file_location(
-        "create_daily_market_signals_view", migration_path
+        "daily_market_signals_view", migration_path
     )
     if spec is None or spec.loader is None:
         raise RuntimeError("Cannot load daily market signals view migration.")
