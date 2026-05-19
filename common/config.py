@@ -119,6 +119,9 @@ class Config:
         self.simfin_chunk_size: int = self._positive_int(
             source.get("simfin.chunkSize", 500000), "simfin.chunkSize"
         )
+        self.simfin_refresh_days: int = self._positive_int(
+            source.get("simfin.refreshDays", 1), "simfin.refreshDays"
+        )
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
@@ -154,7 +157,7 @@ class Config:
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{key} must be a positive integer") from exc
 
-        if parsed < 1:
+        if parsed < 0:
             raise ValueError(f"{key} must be a positive integer")
         return parsed
 

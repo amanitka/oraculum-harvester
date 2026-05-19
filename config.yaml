@@ -1,6 +1,7 @@
 simfin:
   apiKey: $ORACULUM_SIMFIN_API_KEY
   chunkSize: $ORACULUM_SIMFIN_CHUNK_SIZE|500000
+  refreshDays: $ORACULUM_SIMFIN_REFRESH_DAYS|1
 
 kafka:
   brokers: $ORACULUM_KAFKA_BROKERS

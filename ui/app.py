@@ -87,7 +87,7 @@ def _render_metadata_form() -> None:
     st.subheader("Metadata refresh (Markets & Industries)")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Queue market refresh", use_container_width=True):
+        if st.button("Queue market refresh", width="stretch"):
             try:
                 request = build_market_request()
                 _trigger_request(request)
@@ -95,7 +95,7 @@ def _render_metadata_form() -> None:
                 logger.exception("Failed to queue market refresh")
                 st.error("Failed to queue market refresh. Check logs.")
     with col2:
-        if st.button("Queue industry refresh", use_container_width=True):
+        if st.button("Queue industry refresh", width="stretch"):
             try:
                 request = build_industry_request()
                 _trigger_request(request)
@@ -281,9 +281,24 @@ def _render_analysis_tab() -> None:
                 for t in tickers
             }
 
-        # Use a regular text input for the ticker, it's more reliable than dynamic selectboxes in forms
         with st.form("run_analysis_form"):
-            final_ticker = st.text_input("Ticker symbol", placeholder="AAPL")
+            # Provide the selectbox inside the form if tickers are available
+            if ticker_options_map:
+                selected_display = st.selectbox("Select Ticker", options=list(ticker_options_map.keys()))
+                
+                # We extract the actual ticker string and market from the mapped object
+                if selected_display:
+                    selected_ticker_obj = ticker_options_map[selected_display]
+                    final_ticker = selected_ticker_obj.ticker
+                    final_market = selected_ticker_obj.market
+                else:
+                    final_ticker = ""
+                    final_market = ""
+            else:
+                st.info("No tickers found in the database. Please run a Ticker Refresh first.")
+                final_ticker = st.text_input("Manual Ticker symbol", placeholder="AAPL")
+                final_market = selected_market if selected_market != "All" else "us"
+
             is_submitted = st.form_submit_button("Analyze")
 
         if is_submitted:
@@ -294,7 +309,7 @@ def _render_analysis_tab() -> None:
                 try:
                     # Clean inputs before sending
                     clean_ticker = final_ticker.strip().upper()
-                    clean_market = selected_market if selected_market != "All" else "us"
+                    clean_market = final_market.strip().lower()
                     
                     cid = trigger.trigger_analysis(clean_ticker, clean_market)
                     st.success(f"Analysis triggered for {clean_ticker}! ID: {cid}")
@@ -306,13 +321,19 @@ def _render_analysis_tab() -> None:
         
         with Session(engine) as session:
             repo = AnalysisRepository(session)
-            
-            if repo.get_running_count() > 0:
-                import time
-                time.sleep(2)
-                st.rerun() 
-
+            running_count = repo.get_running_count()
             analyses = repo.list_recent(limit=20)
+
+            if running_count > 0:
+                refresh_col, status_col = st.columns([1, 3])
+                with refresh_col:
+                    if st.button("Refresh", key="refresh_recent_analyses"):
+                        st.rerun()
+                with status_col:
+                    st.caption(
+                        f"{running_count} analysis run(s) pending or running. "
+                        "Click Refresh to load the latest status."
+                    )
 
             if not analyses:
                 st.info("No analyses found.")
@@ -331,49 +352,65 @@ def _render_analysis_tab() -> None:
                 )
             df = pd.DataFrame(data)
             
+            # Make sure we maintain a persistent state for the selected row
+            # If the dataframe is redrawn, Streamlit resets selection if we don't manage it carefully.
+            # Using an empty selection by default is safer for avoiding display bugs if rows shift.
+            
             event = st.dataframe(
                 df,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
                 on_select="rerun",
                 selection_mode="single-row",
+                key="analyses_dataframe"
             )
             
             selected_rows = event.selection.rows
+            
+            # If the user clicked a row, use that index.
+            # If nothing is selected, we simply don't display the detailed view at the bottom.
             if selected_rows:
                 selected_idx = selected_rows[0]
-                selected_id = UUID(df.iloc[selected_idx]["ID"])
-                
-                detail = repo.get_by_correlation_id(selected_id)
-                if detail:
-                    st.markdown("---")
-                    st.subheader(f"Analysis for {detail.ticker.upper()}")
+            
+                # Display details for the selected index
+                if 0 <= selected_idx < len(df):
+                    selected_id = UUID(df.iloc[selected_idx]["ID"])
                     
-                    status_color = {
-                        "completed": "green",
-                        "failed": "red",
-                        "running": "blue",
-                        "pending": "gray"
-                    }.get(detail.status, "gray")
-                    
-                    st.markdown(f"**Status:** :{status_color}[{detail.status.upper()}]")
-                    
-                    if detail.status == "completed":
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.metric("Verdict", detail.verdict.upper())
-                        with col2:
-                            st.metric("Conviction", f"{detail.conviction} / 5")
+                    detail = repo.get_by_correlation_id(selected_id)
+                    if detail:
+                        st.markdown("---")
+                        st.subheader(f"Analysis for {detail.ticker.upper()}")
                         
-                        st.markdown("### Report")
-                        st.markdown(detail.report_md)
+                        status_color = {
+                            "completed": "green",
+                            "failed": "red",
+                            "running": "blue",
+                            "pending": "gray"
+                        }.get(detail.status, "gray")
                         
-                        if detail.payload:
-                            with st.expander("Show Traces & Drivers"):
-                                st.json(detail.payload)
-                                
-                    elif detail.status == "failed":
-                        st.error(detail.error or "Unknown error")
+                        st.markdown(f"**Status:** :{status_color}[{detail.status.upper()}]")
+                        
+                        if detail.status == "completed":
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.metric("Verdict", detail.verdict.upper() if detail.verdict else "N/A")
+                            with col2:
+                                st.metric("Conviction", f"{detail.conviction} / 5" if detail.conviction else "N/A")
+                            
+                            st.markdown("### Report")
+                            st.markdown(detail.report_md)
+                            
+                            if detail.payload:
+                                with st.expander("Show Traces & Drivers"):
+                                    st.json(detail.payload)
+                                    
+                        elif detail.status == "failed":
+                            st.error(detail.error or "Unknown error")
+                            
+                        elif detail.status in ("pending", "running"):
+                            st.info("Analysis is currently running. Please wait...")
+            else:
+                st.caption("Click a row in the table above to view the analysis details.")
 
 
 def main() -> None:

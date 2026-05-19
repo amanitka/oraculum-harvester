@@ -25,7 +25,8 @@ class MarketProvider:
     def fetch_markets(self) -> Iterator[Market]:
         """Yield validated `Market` records."""
         logger.info("Loading markets from SimFin")
-        df = sf.load_markets().reset_index()
+        # Added refresh_days parameter from config
+        df = sf.load_markets(refresh_days=config.simfin_refresh_days).reset_index()
         extracted_at = datetime.now(timezone.utc)
         
         published = 0

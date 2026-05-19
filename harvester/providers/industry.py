@@ -25,7 +25,8 @@ class IndustryProvider:
     def fetch_industries(self) -> Iterator[Industry]:
         """Yield validated `Industry` records."""
         logger.info("Loading industries from SimFin")
-        df = sf.load_industries().reset_index()
+        # Added refresh_days parameter from config
+        df = sf.load_industries(refresh_days=config.simfin_refresh_days).reset_index()
         extracted_at = datetime.now(timezone.utc)
         
         published = 0

@@ -115,12 +115,14 @@ class SimFinProvider:
     @staticmethod
     def _load_industry_map() -> Dict[int, Dict[str, Any]]:
         logger.info("Loading industry metadata from SimFin")
-        return sf.load_industries().to_dict(orient="index")
+        # Added refresh_days parameter from config
+        return sf.load_industries(refresh_days=config.simfin_refresh_days).to_dict(orient="index")
 
     @staticmethod
     def _load_companies(market: str) -> pd.DataFrame:
         logger.info("Loading companies for market=%s", market)
-        return sf.load_companies(market=market).reset_index()
+        # Added refresh_days parameter from config
+        return sf.load_companies(market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
     def _data_row_to_ticker(self, row: pd.Series) -> Optional[Ticker]:
         symbol = row.get("Ticker", "Unknown")
@@ -192,7 +194,8 @@ class SimFinProvider:
         # SimFin's load() does not support chunksize, so we load the DataFrame first.
         # The memory spike usually comes from millions of Python Pydantic objects,
         # not the raw Pandas DataFrame. We'll chunk the output yielding instead.
-        df = sf.load_shareprices(variant=variant, market=market).reset_index()
+        # Added refresh_days parameter from config
+        df = sf.load_shareprices(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
         if from_date is not None:
             date_series = pd.to_datetime(df["Date"], errors="coerce")
@@ -311,7 +314,8 @@ class SimFinProvider:
             variant,
             market,
         )
-        return loader(variant=variant, market=market).reset_index()
+        # Added refresh_days parameter from config
+        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
     @staticmethod
     def _data_row_to_income(
@@ -383,7 +387,8 @@ class SimFinProvider:
             variant,
             market,
         )
-        return loader(variant=variant, market=market).reset_index()
+        # Added refresh_days parameter from config
+        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
     @staticmethod
     def _data_row_to_balance_sheet(
@@ -458,7 +463,8 @@ class SimFinProvider:
             variant,
             market,
         )
-        return loader(variant=variant, market=market).reset_index()
+        # Added refresh_days parameter from config
+        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
     @staticmethod
     def _data_row_to_cash_flow_statement(

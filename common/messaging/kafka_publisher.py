@@ -21,7 +21,10 @@ class KafkaRequestPublisher:
             # Harvester requests go to a single topic
             "fetch_ticker": config.harvester_request_topic,
             "fetch_statements": config.harvester_request_topic,
-            "fetch_share_prices": config.harvester_request_topic,
+            "fetch_income_statement": config.harvester_request_topic,
+            "fetch_balance_sheet": config.harvester_request_topic,
+            "fetch_cash_flow_statement": config.harvester_request_topic,
+            "fetch_share_price": config.harvester_request_topic,
             "fetch_market": config.harvester_request_topic,
             "fetch_industry": config.harvester_request_topic,
             # Analyst requests go to the analyst topic
