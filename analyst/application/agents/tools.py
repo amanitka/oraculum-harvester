@@ -61,6 +61,10 @@ class DataTools(Protocol):
         """Returns daily closing prices for a specific window as a Markdown table."""
         ...
 
+    async def get_share_price_signals(self, ticker: str, market: str, as_of: date) -> str:
+        """Returns recent daily and historical monthly share price signals as JSON."""
+        ...
+
     def get_derived_metrics(
         self,
         ticker: str,

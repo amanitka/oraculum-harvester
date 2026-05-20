@@ -12,6 +12,9 @@ from analyst.infrastructure.repositories.derived_metrics import DerivedMetricsRe
 from analyst.infrastructure.repositories.income_statement import IncomeStatementRepository
 from analyst.infrastructure.repositories.share_price import SharePriceRepository
 from analyst.infrastructure.repositories.ticker import TickerRepository
+from analyst.infrastructure.repositories.daily_market_signals import DailyMarketSignalsRepository, DailyMarketSignalsQuery
+import json
+from datetime import timedelta
 from analyst.infrastructure.models.industry import IndustryDB
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
@@ -32,6 +35,7 @@ class AgentDataTools(DataTools):
         self._cash_flow_repo = CashFlowStatementRepository(session) # type: ignore
         self._share_price_repo = SharePriceRepository(session) # type: ignore
         self._derived_metrics_repo = DerivedMetricsRepository(session) # type: ignore
+        self._signals_repo = DailyMarketSignalsRepository(session)
 
     async def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
         db_ticker = await self._ticker_repo.get_by_ticker(ticker)
@@ -100,6 +104,41 @@ class AgentDataTools(DataTools):
     def get_price_window(self, ticker: str, start: date, end: date) -> str:
         # This needs to be async or use run_sync
         return f"Share Prices for {ticker} from {start} to {end}"
+
+    async def get_share_price_signals(self, ticker: str, market: str, as_of: date) -> str:
+        # Fetch last 30 days
+        thirty_days_ago = as_of - timedelta(days=30)
+        daily_query = DailyMarketSignalsQuery(
+            ticker=ticker,
+            market=market,
+            from_date=thirty_days_ago,
+            to_date=as_of,
+            limit=30,
+        )
+        daily_results = await self._signals_repo.fetch(daily_query)
+
+        # Fetch last 10 years monthly
+        ten_years_ago = as_of.replace(year=as_of.year - 10)
+        monthly_query = DailyMarketSignalsQuery(
+            ticker=ticker,
+            market=market,
+            from_date=ten_years_ago,
+            to_date=as_of,
+            only_month_end=True,
+            limit=120,
+        )
+        monthly_results = await self._signals_repo.fetch(monthly_query)
+
+        def _serialize_date(obj):
+            if isinstance(obj, date):
+                return obj.isoformat()
+            raise TypeError("Type not serializable")
+
+        data = {
+            "recent_daily": [row.model_dump(exclude_none=True) for row in daily_results],
+            "historical_monthly": [row.model_dump(exclude_none=True) for row in monthly_results]
+        }
+        return json.dumps(data, default=_serialize_date)
 
     def get_derived_metrics(
         self,
