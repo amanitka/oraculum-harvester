@@ -74,7 +74,7 @@ class _LlmConfig:
         self.api_key: str = source.get("llm.api_key")
         self.api_base: str = source.get("llm.api_base", "https://generativelanguage.googleapis.com/v1beta/")
         self.max_tokens: int = self._positive_int(
-            source.get("llm.maxTokens", 4096), "llm.maxTokens"
+            source.get("llm.maxTokens", 8192), "llm.maxTokens"
         )
         self.temperature: float = self._positive_float(
             source.get("llm.temperature", 0.2), "llm.temperature"

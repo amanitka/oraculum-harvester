@@ -1,8 +1,4 @@
 from pathlib import Path
-import json
-from typing import Any
-
-from pydantic import Field, field_validator
 
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
@@ -10,41 +6,6 @@ from analyst.application.agents.models import SharePriceOutput, FinancialFactShe
 from analyst.application.agents.factsheet import FactSheetOutput
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "share_price.md"
-_DEFAULT_KEY_SIGNALS_SUMMARY = (
-    "No dominant signal identified; monitor momentum, valuation, and volume changes."
-)
-_TEXT_PRIORITY_KEYS = (
-    "summary",
-    "takeaway",
-    "conclusion",
-    "analysis",
-    "signal",
-    "key_signal",
-    "key_signals_summary",
-)
-
-
-def _coerce_to_text(value: Any) -> str:
-    if value is None:
-        return ""
-
-    if isinstance(value, str):
-        return value.strip()
-
-    if isinstance(value, dict):
-        for key in _TEXT_PRIORITY_KEYS:
-            preferred = value.get(key)
-            if isinstance(preferred, str) and preferred.strip():
-                return preferred.strip()
-
-        fragments = [_coerce_to_text(item) for item in value.values()]
-        return " ".join(fragment for fragment in fragments if fragment)
-
-    if isinstance(value, list):
-        fragments = [_coerce_to_text(item) for item in value]
-        return " ".join(fragment for fragment in fragments if fragment)
-
-    return str(value)
 
 
 class SharePriceAgent(Agent[SharePriceOutput]):

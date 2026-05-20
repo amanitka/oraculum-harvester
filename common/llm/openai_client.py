@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import time
 from typing import Any, Mapping
@@ -14,6 +13,8 @@ from common.config import config
 from common.llm.base import LlmClient, LlmResponse
 
 logger = logging.getLogger(__name__)
+_INCOMPLETE_ERROR_TEXT = "incomplete structured response"
+_MAX_RETRY_TOKENS = config.llm.max_tokens
 
 class StructuredOutputError(ValueError):
     """Raised when structured model output cannot be parsed reliably."""
@@ -46,6 +47,14 @@ class OpenAiClient(LlmClient):
         """
         attempt = 0
         backoff = self._initial_backoff_s
+        current_max_tokens = min(max_tokens, _MAX_RETRY_TOKENS)
+
+        if current_max_tokens < max_tokens:
+            logger.warning(
+                "Requested max_tokens %d exceeds guardrail %d; capping request.",
+                max_tokens,
+                _MAX_RETRY_TOKENS,
+            )
 
         while attempt < self._max_retries:
             try:
@@ -55,7 +64,7 @@ class OpenAiClient(LlmClient):
                 kwargs: dict[str, Any] = {
                     "model": model,
                     "messages": messages, # type: ignore
-                    "max_tokens": max_tokens,
+                    "max_tokens": current_max_tokens,
                     "temperature": temperature,
                 }
 
@@ -91,6 +100,7 @@ class OpenAiClient(LlmClient):
                     input_tokens=prompt_tokens,
                     output_tokens=completion_tokens,
                     latency_ms=int((end_time - start_time) * 1000),
+                    finish_reason=finish_reason,
                 )
 
             except (OpenAIRateLimitError, InternalServerError, OpenAIApiConnectionError) as e:
@@ -121,6 +131,15 @@ class OpenAiClient(LlmClient):
                 if attempt >= self._max_retries:
                     logger.error("LLM structured output failed after multiple retries.")
                     raise
+
+                if _INCOMPLETE_ERROR_TEXT in str(e).lower() and current_max_tokens < _MAX_RETRY_TOKENS:
+                    next_max_tokens = min(max(current_max_tokens * 2, current_max_tokens + 1), _MAX_RETRY_TOKENS)
+                    logger.warning(
+                        "Increasing max_tokens for retry from %d to %d after truncation.",
+                        current_max_tokens,
+                        next_max_tokens,
+                    )
+                    current_max_tokens = next_max_tokens
 
                 await asyncio.sleep(backoff)
                 backoff *= 2
