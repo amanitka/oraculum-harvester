@@ -31,15 +31,17 @@ class RiskAgent(Agent[RiskOutput]):
     async def run(self, ctx: AgentContext) -> AgentOutput[RiskOutput]:
         variant: StatementVariant = "quarterly"
 
-        balance_sheet_md = ctx.tools.get_balance_sheet_history(
+        balance_sheet_md = await ctx.tools.get_balance_sheet_history(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        derived_metrics_md = ctx.tools.get_derived_metrics(
+        derived_metrics_md = await ctx.tools.get_derived_metrics(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        
+
         start_date = ctx.as_of - timedelta(days=365)
-        share_prices_md = ctx.tools.get_price_window(ctx.ticker, start_date, ctx.as_of)
+        share_prices_md = await ctx.tools.get_price_window(
+            ctx.ticker, start_date, ctx.as_of
+        )
 
         prompt = self.system_prompt.replace("{{ balance_sheet }}", balance_sheet_md)
         prompt = prompt.replace("{{ derived_metrics }}", derived_metrics_md)
@@ -60,5 +62,5 @@ class RiskAgent(Agent[RiskOutput]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)

@@ -28,15 +28,15 @@ class FundamentalsAgent(Agent[FundamentalsOutput]):
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, ctx: AgentContext) -> AgentOutput[FundamentalsOutput]:
-        variant: StatementVariant = ctx.default_variant 
+        variant: StatementVariant = ctx.default_variant
 
-        income_statement_md = ctx.tools.get_income_statement_history(
+        income_statement_md = await ctx.tools.get_income_statement_history(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        balance_sheet_md = ctx.tools.get_balance_sheet_history(
+        balance_sheet_md = await ctx.tools.get_balance_sheet_history(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        derived_metrics_md = ctx.tools.get_derived_metrics(
+        derived_metrics_md = await ctx.tools.get_derived_metrics(
             ctx.ticker, template=ctx.template, variant=variant
         )
 
@@ -59,5 +59,5 @@ class FundamentalsAgent(Agent[FundamentalsOutput]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)

@@ -30,12 +30,14 @@ class ValuationAgent(Agent[ValuationOutput]):
     async def run(self, ctx: AgentContext) -> AgentOutput[ValuationOutput]:
         variant: StatementVariant = "ttm"
 
-        derived_metrics_md = ctx.tools.get_derived_metrics(
+        derived_metrics_md = await ctx.tools.get_derived_metrics(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        
+
         start_date = ctx.as_of - timedelta(days=30)
-        share_prices_md = ctx.tools.get_price_window(ctx.ticker, start_date, ctx.as_of)
+        share_prices_md = await ctx.tools.get_price_window(
+            ctx.ticker, start_date, ctx.as_of
+        )
 
         prompt = self.system_prompt.replace("{{ derived_metrics }}", derived_metrics_md)
         prompt = prompt.replace("{{ share_prices }}", share_prices_md)
@@ -55,5 +57,5 @@ class ValuationAgent(Agent[ValuationOutput]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)

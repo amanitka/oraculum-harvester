@@ -7,6 +7,9 @@ from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "planner.md"
+_DEFAULT_ANALYSIS_FOCUS = (
+    "Prioritize recent momentum shifts, valuation dislocations, and unusual volume signals."
+)
 
 
 class PlannerPlan(BaseModel):
@@ -28,6 +31,7 @@ class PlannerPlan(BaseModel):
         default="quarterly", description="The variant to use for risk analysis."
     )
     analysis_focus: str = Field(
+        default=_DEFAULT_ANALYSIS_FOCUS,
         description="A one-sentence description of what to focus on, based on recent share price signals."
     )
 
@@ -73,5 +77,5 @@ class PlannerAgent(Agent[PlannerPlan]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)

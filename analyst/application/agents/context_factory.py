@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 import json
+import logging
 
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -20,6 +21,8 @@ from analyst.infrastructure.repositories.income_statement import IncomeStatement
 from analyst.infrastructure.repositories.share_price import SharePriceRepository
 from analyst.infrastructure.repositories.ticker import TickerRepository
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
+
+logger = logging.getLogger(__name__)
 
 
 class AgentDataTools(DataTools):
@@ -71,24 +74,51 @@ class AgentDataTools(DataTools):
     async def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
         db_ticker = await self._ticker_repo.get_by_ticker(ticker)
         if not db_ticker:
+            logger.info(
+                "AgentDataTools.get_ticker_profile fetched %d rows for ticker=%s",
+                0,
+                ticker,
+            )
             return None
-        return {
+
+        profile = {
             "ticker": db_ticker.ticker,
             "name": db_ticker.company_name or "Unknown",
             "industry": db_ticker.industry_name or "Unknown",
             "sector": db_ticker.sector_name or "Unknown",
             "industry_id": str(db_ticker.industry_id) if db_ticker.industry_id else "",
         }
+        logger.info(
+            "AgentDataTools.get_ticker_profile fetched %d rows for ticker=%s",
+            1,
+            ticker,
+        )
+        return profile
 
     async def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
         profile = await self.get_ticker_profile(ticker)
+        resolved_template: IncomeStatementTemplate = "general"
+        row_count = 0
+
         if not profile or not profile.get("industry_id"):
-            return "general"
+            logger.info(
+                "AgentDataTools.resolve_template fetched %d rows for ticker=%s resolved_template=%s",
+                row_count,
+                ticker,
+                resolved_template,
+            )
+            return resolved_template
 
         try:
             industry_id = int(profile["industry_id"])
         except (ValueError, TypeError):
-            return "general"
+            logger.info(
+                "AgentDataTools.resolve_template fetched %d rows for ticker=%s resolved_template=%s",
+                row_count,
+                ticker,
+                resolved_template,
+            )
+            return resolved_template
 
         statement = select(IndustryDB).where(IndustryDB.industry_id == industry_id)
 
@@ -98,9 +128,16 @@ class AgentDataTools(DataTools):
         industry_db = await self._session.run_sync(_run_sync_query)
 
         if industry_db:
-            return industry_db.statement_template
+            resolved_template = industry_db.statement_template
+            row_count = 1
 
-        return "general"
+        logger.info(
+            "AgentDataTools.resolve_template fetched %d rows for ticker=%s resolved_template=%s",
+            row_count,
+            ticker,
+            resolved_template,
+        )
+        return resolved_template
 
     async def get_income_statement_history(
         self,
@@ -114,7 +151,17 @@ class AgentDataTools(DataTools):
             ticker=ticker, template=template, variant=variant, limit=limit
         )
         title = f"Income Statement History for {ticker} ({variant.upper()})"
-        return self._to_markdown(history, title=title)
+        markdown = self._to_markdown(history, title=title)
+        logger.info(
+            "AgentDataTools.get_income_statement_history fetched %d rows for "
+            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            len(history),
+            ticker,
+            template,
+            variant,
+            len(markdown),
+        )
+        return markdown
 
     async def get_balance_sheet_history(
         self,
@@ -128,7 +175,17 @@ class AgentDataTools(DataTools):
             ticker=ticker, template=template, variant=variant, limit=limit
         )
         title = f"Balance Sheet History for {ticker} ({variant.upper()})"
-        return self._to_markdown(history, title=title)
+        markdown = self._to_markdown(history, title=title)
+        logger.info(
+            "AgentDataTools.get_balance_sheet_history fetched %d rows for "
+            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            len(history),
+            ticker,
+            template,
+            variant,
+            len(markdown),
+        )
+        return markdown
 
     async def get_cash_flow_history(
         self,
@@ -142,14 +199,34 @@ class AgentDataTools(DataTools):
             ticker=ticker, template=template, variant=variant, limit=limit
         )
         title = f"Cash Flow History for {ticker} ({variant.upper()})"
-        return self._to_markdown(history, title=title)
+        markdown = self._to_markdown(history, title=title)
+        logger.info(
+            "AgentDataTools.get_cash_flow_history fetched %d rows for "
+            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            len(history),
+            ticker,
+            template,
+            variant,
+            len(markdown),
+        )
+        return markdown
 
     async def get_price_window(self, ticker: str, start: date, end: date) -> str:
         prices = await self._share_price_repo.fetch_prices(
             ticker=ticker, start_date=start, end_date=end
         )
         title = f"Share Prices for {ticker} from {start} to {end}"
-        return self._to_markdown(prices, title=title)
+        markdown = self._to_markdown(prices, title=title)
+        logger.info(
+            "AgentDataTools.get_price_window fetched %d rows for "
+            "ticker=%s start=%s end=%s markdown_chars=%d",
+            len(prices),
+            ticker,
+            start,
+            end,
+            len(markdown),
+        )
+        return markdown
 
     async def get_share_price_signals(self, ticker: str, market: str, as_of: date) -> str:
         # Fetch last 30 days
@@ -184,7 +261,18 @@ class AgentDataTools(DataTools):
             "recent_daily": [row.model_dump(exclude_none=True) for row in daily_results],
             "historical_monthly": [row.model_dump(exclude_none=True) for row in monthly_results],
         }
-        return json.dumps(data, default=_serialize_date)
+        payload = json.dumps(data, default=_serialize_date)
+        logger.info(
+            "AgentDataTools.get_share_price_signals fetched daily_rows=%d monthly_rows=%d "
+            "for ticker=%s market=%s as_of=%s json_chars=%d",
+            len(daily_results),
+            len(monthly_results),
+            ticker,
+            market,
+            as_of,
+            len(payload),
+        )
+        return payload
 
     async def get_derived_metrics(
         self,
@@ -199,7 +287,17 @@ class AgentDataTools(DataTools):
         )
         metrics = await self._derived_metrics_repo.fetch(query)
         title = f"Derived Metrics for {ticker} ({template.upper()}/{variant.upper()})"
-        return self._to_markdown(metrics, title=title)
+        markdown = self._to_markdown(metrics, title=title)
+        logger.info(
+            "AgentDataTools.get_derived_metrics fetched %d rows for "
+            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            len(metrics),
+            ticker,
+            template,
+            variant,
+            len(markdown),
+        )
+        return markdown
 
 
 class AgentContextFactory:

@@ -1,5 +1,6 @@
-import pytest
 from datetime import date
+
+import pytest
 
 from analyst.application.agents.context import AgentContext
 from analyst.application.agents.fundamentals import FundamentalsAgent
@@ -14,25 +15,25 @@ class FakeDataTools:
     async def resolve_template(self, ticker: str) -> IncomeStatementTemplate:
         return "general"
 
-    def get_income_statement_history(
+    async def get_income_statement_history(
         self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
     ) -> str:
         return "fake income statement"
 
-    def get_balance_sheet_history(
+    async def get_balance_sheet_history(
         self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
     ) -> str:
         return "fake balance sheet"
 
-    def get_cash_flow_history(
+    async def get_cash_flow_history(
         self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
     ) -> str:
         return "fake cash flow"
 
-    def get_price_window(self, ticker: str, start: date, end: date) -> str:
+    async def get_price_window(self, ticker: str, start: date, end: date) -> str:
         return "fake prices"
 
-    def get_derived_metrics(
+    async def get_derived_metrics(
         self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
     ) -> str:
         return "fake metrics"

@@ -13,10 +13,12 @@ class SharePriceOutput(BaseModel):
     momentum_analysis: str = Field(description="Paragraph analyzing recent price momentum, using moving averages and volume velocity.")
     valuation_analysis: str = Field(description="Paragraph analyzing the current valuation based on PE, P/FCF, and P/B ratios.")
     historical_trend_analysis: str = Field(description="Paragraph comparing current valuation and momentum to the 10-year historical baseline.")
-    key_signals_summary: str = Field(description="One-sentence summary of the most critical signals observed (e.g., Graham Net-Net, high volume).")
+    key_signals_summary: str = Field(
+        description="One-sentence summary of the most critical signals observed (e.g., Graham Net-Net, high volume)."
+    )
 
 
-class SharePriceAgent(Agent[SharePriceOutput]):
+class SharePriceSignalsAgent(Agent[SharePriceOutput]):
     """
     Agent responsible for analyzing daily market signals and historical monthly signals.
     """
@@ -49,3 +51,6 @@ class SharePriceAgent(Agent[SharePriceOutput]):
         total_tokens = response.input_tokens + response.output_tokens
 
         return AgentOutput(result=result, tokens=total_tokens)
+
+
+SharePriceAgent = SharePriceSignalsAgent

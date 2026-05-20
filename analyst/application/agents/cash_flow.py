@@ -30,10 +30,10 @@ class CashFlowAgent(Agent[CashFlowOutput]):
     async def run(self, ctx: AgentContext) -> AgentOutput[CashFlowOutput]:
         variant: StatementVariant = ctx.default_variant
 
-        cash_flow_md = ctx.tools.get_cash_flow_history(
+        cash_flow_md = await ctx.tools.get_cash_flow_history(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        derived_metrics_md = ctx.tools.get_derived_metrics(
+        derived_metrics_md = await ctx.tools.get_derived_metrics(
             ctx.ticker, template=ctx.template, variant=variant
         )
 
@@ -55,5 +55,5 @@ class CashFlowAgent(Agent[CashFlowOutput]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)
