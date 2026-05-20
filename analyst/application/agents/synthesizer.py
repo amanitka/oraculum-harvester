@@ -1,22 +1,11 @@
 import json
 from pathlib import Path
-from pydantic import BaseModel, Field
 
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
-from analyst.application.analysis.models import AnalysisVerdict
+from analyst.application.agents.models import SynthesizerOutput
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "synthesizer.md"
-
-
-class SynthesizerOutput(BaseModel):
-    """The structured output produced by the SynthesizerAgent."""
-
-    report_md: str = Field(description="The final analysis report in Markdown format.")
-    verdict: AnalysisVerdict = Field(description="The final investment verdict.")
-    conviction: int = Field(description="Conviction level of the verdict (1-5).", ge=1, le=5)
-    key_drivers: list[str] = Field(description="Key bullish drivers identified.")
-    key_risks: list[str] = Field(description="Key bearish risks identified.")
 
 
 class SynthesizerAgent(Agent[SynthesizerOutput]):
@@ -31,12 +20,23 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, ctx: AgentContext) -> AgentOutput[SynthesizerOutput]:
+        # Exclude FactSheet and Critic from the main prior outputs for synthesis
+        specialist_outputs = {
+            name: model
+            for name, model in ctx.prior_outputs.items()
+            if name not in ["FactSheet", "Critic"]
+        }
         prior_outputs_json = json.dumps(
-            {name: model.model_dump() for name, model in ctx.prior_outputs.items()},
+            {name: model.model_dump() for name, model in specialist_outputs.items()},
             indent=2,
         )
 
+        # Get the critic's output
+        critic_output = ctx.prior_outputs.get("Critic")
+        critic_report_json = critic_output.model_dump_json(indent=2) if critic_output else "{}"
+
         prompt = self.system_prompt.replace("{{ prior_outputs }}", prior_outputs_json)
+        prompt = prompt.replace("{{ critic_report }}", critic_report_json)
 
         messages = [
             {"role": "system", "content": prompt},
@@ -45,7 +45,7 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
                 "content": f"Synthesize the analysis for {ctx.ticker}. "
                 f"The resolved statement template was '{ctx.template}'. "
                 f"The default variant was '{ctx.default_variant}'. "
-                "Generate the final report and structured verdict.",
+                "Generate the final report and structured verdict, explicitly addressing the critic's findings.",
             },
         ]
 

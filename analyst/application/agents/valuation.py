@@ -1,19 +1,12 @@
 from pathlib import Path
-from datetime import timedelta
-from pydantic import BaseModel, Field
+import json
 
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
-from common.domain.income_statement import StatementVariant
+from analyst.application.agents.models import ValuationOutput, FinancialFactSheet
+from analyst.application.agents.factsheet import FactSheetOutput
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "valuation.md"
-
-
-class ValuationOutput(BaseModel):
-    """The structured output produced by the ValuationAgent."""
-
-    multiple_analysis: str = Field(description="Paragraph describing current multiples vs history.")
-    summary: str = Field(description="One sentence summary of valuation.")
 
 
 class ValuationAgent(Agent[ValuationOutput]):
@@ -28,23 +21,26 @@ class ValuationAgent(Agent[ValuationOutput]):
         self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, ctx: AgentContext) -> AgentOutput[ValuationOutput]:
-        variant: StatementVariant = "ttm"
+        # Access the pre-compiled fact sheet from the context
+        fact_sheet_output: FactSheetOutput = ctx.prior_outputs["FactSheet"]
+        fact_sheet: FinancialFactSheet = fact_sheet_output.fact_sheet
 
-        derived_metrics_md = await ctx.tools.get_derived_metrics(
-            ctx.ticker, template=ctx.template, variant=variant
-        )
+        # Prepare the data for the prompt
+        prompt_data = {
+            "derived_metrics": fact_sheet.derived_metrics,
+            "share_price_signals": fact_sheet.share_price_signals,
+        }
+        prompt_data_json = json.dumps(prompt_data, indent=2)
 
-        start_date = ctx.as_of - timedelta(days=30)
-        share_prices_md = await ctx.tools.get_price_window(
-            ctx.ticker, start_date, ctx.as_of
-        )
-
-        prompt = self.system_prompt.replace("{{ derived_metrics }}", derived_metrics_md)
-        prompt = prompt.replace("{{ share_prices }}", share_prices_md)
+        prompt = self.system_prompt.replace("{{ fact_sheet_json }}", prompt_data_json)
 
         messages = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": f"Analyze valuation for {ctx.ticker} as of {ctx.as_of}."},
+            {
+                "role": "user",
+                "content": f"Analyze the valuation for {ctx.ticker} as of {ctx.as_of} "
+                f"based on the provided financial fact sheet.",
+            },
         ]
 
         response = await ctx.llm.complete(

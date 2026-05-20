@@ -5,6 +5,8 @@ from uuid import UUID
 
 from analyst.application.agents.cash_flow import CashFlowAgent
 from analyst.application.agents.context import AgentContext
+from analyst.application.agents.critic import CriticAgent
+from analyst.application.agents.factsheet import FactSheetAgent
 from analyst.application.agents.fundamentals import FundamentalsAgent
 from analyst.application.agents.planner import PlannerAgent
 from analyst.application.agents.risk import RiskAgent
@@ -31,6 +33,7 @@ class AnalysisWorkflow:
         self._tools = tools
 
         self._planner = PlannerAgent()
+        self._fact_sheet_agent = FactSheetAgent()
         self._specialists = [
             FundamentalsAgent(),
             CashFlowAgent(),
@@ -38,6 +41,7 @@ class AnalysisWorkflow:
             RiskAgent(),
             SharePriceAgent(),
         ]
+        self._critic = CriticAgent()
         self._synthesizer = SynthesizerAgent()
 
     async def run(self, request: AnalyzeTickerRequest, correlation_id: UUID) -> AnalysisResult:
@@ -91,6 +95,12 @@ class AnalysisWorkflow:
                 prior_outputs={},
             )
 
+            logger.info("Starting FactSheet phase", extra=cid)
+            fact_sheet_out = await self._fact_sheet_agent.run(shared_ctx)
+            total_tokens += fact_sheet_out.tokens
+            shared_ctx.prior_outputs["FactSheet"] = fact_sheet_out.result
+            logger.info("FactSheet phase complete.", extra=cid)
+
             for agent in self._specialists:
                 logger.info(f"Starting {agent.name} phase", extra=cid)
                 output = await agent.run(shared_ctx)
@@ -103,6 +113,18 @@ class AnalysisWorkflow:
                     output.tokens,
                     extra=cid,
                 )
+
+            logger.info("Starting Critic phase", extra=cid)
+            critic_output = await self._critic.run(shared_ctx)
+            shared_ctx.prior_outputs["Critic"] = critic_output.result
+            total_tokens += critic_output.tokens
+            agent_trace["Critic"] = critic_output.result.model_dump()
+            logger.info(
+                "Critic phase complete. Tokens: %d. Consistent: %s",
+                critic_output.tokens,
+                critic_output.result.is_consistent,
+                extra=cid,
+            )
 
             logger.info("Starting Synthesizer phase", extra=cid)
             final_output = await self._synthesizer.run(shared_ctx)
