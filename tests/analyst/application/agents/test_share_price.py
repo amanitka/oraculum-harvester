@@ -1,8 +1,9 @@
-import pytest
 from datetime import date
 
+import pytest
+
 from analyst.application.agents.context import AgentContext
-from analyst.application.agents.share_price_signals import SharePriceSignalsAgent
+from analyst.application.agents.share_price import SharePriceAgent
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 from tests.common.llm.fake_llm_client import FakeLlmClient
 
@@ -58,8 +59,44 @@ async def test_share_price_signals_agent_success():
         prior_outputs={},
     )
 
-    agent = SharePriceSignalsAgent()
+    agent = SharePriceAgent()
     output = await agent.run(ctx)
 
     assert output.result.key_signals_summary == "Buy now."
     assert output.tokens == 30
+
+
+@pytest.mark.asyncio
+async def test_share_price_signals_agent_coerces_nested_fields_and_default_summary():
+    canned_json = (
+        '{"momentum_analysis": {"recent_trend": "Momentum remains positive."}, '
+        '"valuation_analysis": {"recent_valuation": {"summary": "Valuation is rich versus history."}}, '
+        '"historical_trend_analysis": {"historical_comparison": "Current multiples are above long-term averages."}}'
+    )
+    llm = FakeLlmClient(canned_response_text=canned_json)
+    tools = FakeDataTools()
+
+    ctx = AgentContext(
+        ticker="AAPL",
+        market="us",
+        as_of=date.today(),
+        template="general",
+        default_variant="annual",
+        tools=tools,
+        llm=llm,
+        token_budget=1000,
+        prior_outputs={},
+    )
+
+    agent = SharePriceAgent()
+    output = await agent.run(ctx)
+
+    assert output.result.momentum_analysis == "Momentum remains positive."
+    assert output.result.valuation_analysis == "Valuation is rich versus history."
+    assert (
+        output.result.historical_trend_analysis
+        == "Current multiples are above long-term averages."
+    )
+    assert output.result.key_signals_summary == (
+        "No dominant signal identified; monitor momentum, valuation, and volume changes."
+    )

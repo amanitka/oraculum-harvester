@@ -19,4 +19,13 @@ The data provided includes two datasets in JSON format:
     -   Identify and summarize any standout signals across both datasets. Pay special attention to `is_graham_net_net` if it is `1`, as this is a highly significant deep-value indicator.
     -   Conclude with a single, concise sentence summarizing the most critical takeaway from the data.
 
-Produce the analysis in the requested JSON format.
+You MUST return a single valid JSON object with exactly these top-level keys:
+{
+  "momentum_analysis": "string paragraph",
+  "valuation_analysis": "string paragraph",
+  "historical_trend_analysis": "string paragraph",
+  "key_signals_summary": "string (one concise sentence)"
+}
+
+Every field value must be a plain string. Do not return nested objects or arrays.
+Do not include markdown, code fences, or additional keys.
