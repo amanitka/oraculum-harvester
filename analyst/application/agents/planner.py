@@ -27,6 +27,9 @@ class PlannerPlan(BaseModel):
     risk_variant: StatementVariant = Field(
         default="quarterly", description="The variant to use for risk analysis."
     )
+    analysis_focus: str = Field(
+        description="A one-sentence description of what to focus on, based on recent share price signals."
+    )
 
 
 class PlannerAgent(Agent[PlannerPlan]):
@@ -43,22 +46,28 @@ class PlannerAgent(Agent[PlannerPlan]):
     async def run(self, ctx: AgentContext) -> AgentOutput[PlannerPlan]:
         profile = await ctx.tools.get_ticker_profile(ctx.ticker) or {}
         resolved_template = await ctx.tools.resolve_template(ctx.ticker)
-        
+        share_price_signals = await ctx.tools.get_share_price_signals(
+            ctx.ticker, ctx.market, ctx.as_of
+        )
+
+        prompt = self.system_prompt.replace("{{ market_signals_json }}", share_price_signals)
+
         messages = [
-            {"role": "system", "content": self.system_prompt},
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": f"Ticker: {ctx.ticker}\nProfile: {profile}\n"
                 f"Resolved Template must be: {resolved_template}\n"
-                "Please generate the plan using default variants (annual for fundamentals/cash_flow, ttm for valuation, quarterly for risk).",
+                "Please generate the plan using default variants (annual for fundamentals/cash_flow, ttm for valuation, quarterly for risk), "
+                "and set an analysis focus based on the market signals.",
             },
         ]
 
         response = await ctx.llm.complete(
             messages=messages,
             model="gemini-2.5-flash-lite",
-            max_tokens=300,
-            temperature=0.0,
+            max_tokens=350,
+            temperature=0.1,
             response_format=self.output_model,
         )
 

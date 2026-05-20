@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import datetime
+from datetime import timezone
 from typing import Optional
 
 from sqlmodel import select
@@ -17,6 +18,20 @@ class SharePriceRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def fetch_prices(
+        self, ticker: str, start_date: datetime.date, end_date: datetime.date
+    ) -> list[SharePriceDB]:
+        """Return the share prices for a ticker within a date window."""
+        statement = (
+            select(SharePriceDB)
+            .where(SharePriceDB.ticker == ticker)
+            .where(SharePriceDB.trade_date >= start_date)
+            .where(SharePriceDB.trade_date <= end_date)
+            .order_by(SharePriceDB.trade_date.asc())
+        )
+        result = await self._session.exec(statement)
+        return list(result.all())
 
     async def upsert(self, share_price: SharePrice) -> SharePriceDB:
         """Insert or fully refresh the row keyed by `(ticker, market, trade_date)`."""
@@ -33,7 +48,7 @@ class SharePriceRepository:
         else:
             for key, value in payload.items():
                 setattr(existing, key, value)
-            existing.updated_at = datetime.now(timezone.utc)
+            existing.updated_at = datetime.datetime.now(timezone.utc)
             row = existing
             
         await self._session.commit()

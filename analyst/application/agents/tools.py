@@ -24,7 +24,7 @@ class DataTools(Protocol):
         """
         ...
 
-    def get_income_statement_history(
+    async def get_income_statement_history(
         self,
         ticker: str,
         *,
@@ -35,7 +35,7 @@ class DataTools(Protocol):
         """Returns income statement history formatted as a Markdown table."""
         ...
 
-    def get_balance_sheet_history(
+    async def get_balance_sheet_history(
         self,
         ticker: str,
         *,
@@ -46,7 +46,7 @@ class DataTools(Protocol):
         """Returns balance sheet history formatted as a Markdown table."""
         ...
 
-    def get_cash_flow_history(
+    async def get_cash_flow_history(
         self,
         ticker: str,
         *,
@@ -57,7 +57,7 @@ class DataTools(Protocol):
         """Returns cash flow history formatted as a Markdown table."""
         ...
 
-    def get_price_window(self, ticker: str, start: date, end: date) -> str:
+    async def get_price_window(self, ticker: str, start: date, end: date) -> str:
         """Returns daily closing prices for a specific window as a Markdown table."""
         ...
 
@@ -65,7 +65,7 @@ class DataTools(Protocol):
         """Returns recent daily and historical monthly share price signals as JSON."""
         ...
 
-    def get_derived_metrics(
+    async def get_derived_metrics(
         self,
         ticker: str,
         *,

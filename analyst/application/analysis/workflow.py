@@ -8,8 +8,8 @@ from analyst.application.agents.context import AgentContext
 from analyst.application.agents.fundamentals import FundamentalsAgent
 from analyst.application.agents.planner import PlannerAgent
 from analyst.application.agents.risk import RiskAgent
+from analyst.application.agents.share_price import SharePriceAgent
 from analyst.application.agents.synthesizer import SynthesizerAgent
-from analyst.application.agents.share_price_signals import SharePriceSignalsAgent
 from analyst.application.agents.tools import DataTools
 from analyst.application.agents.valuation import ValuationAgent
 from analyst.application.analysis.models import AnalysisResult
@@ -36,7 +36,7 @@ class AnalysisWorkflow:
             CashFlowAgent(),
             ValuationAgent(),
             RiskAgent(),
-            SharePriceSignalsAgent(),
+            SharePriceAgent(),
         ]
         self._synthesizer = SynthesizerAgent()
 
@@ -49,6 +49,11 @@ class AnalysisWorkflow:
         agent_trace = {}
         now = datetime.now(timezone.utc)
         
+        cid = {"cid": correlation_id}
+        logger.info(
+            "Starting analysis workflow for ticker %s", request.ticker, extra=cid
+        )
+
         initial_ctx = AgentContext(
             ticker=request.ticker,
             market=request.market,
@@ -62,12 +67,18 @@ class AnalysisWorkflow:
         )
 
         try:
-            logger.info("Starting Planner phase", extra={"cid": correlation_id})
+            logger.info("Starting Planner phase", extra=cid)
             plan_out = await self._planner.run(initial_ctx)
             plan = plan_out.result
             total_tokens += plan_out.tokens
             agent_trace["Planner"] = plan.model_dump()
-            
+            logger.info(
+                "Planner phase complete. Tokens: %d. Plan: %s",
+                plan_out.tokens,
+                plan.model_dump_json(),
+                extra=cid,
+            )
+
             shared_ctx = AgentContext(
                 ticker=request.ticker,
                 market=request.market,
@@ -81,17 +92,36 @@ class AnalysisWorkflow:
             )
 
             for agent in self._specialists:
-                logger.info(f"Starting {agent.name} phase", extra={"cid": correlation_id})
-                
+                logger.info(f"Starting {agent.name} phase", extra=cid)
                 output = await agent.run(shared_ctx)
                 shared_ctx.prior_outputs[agent.name] = output.result
                 total_tokens += output.tokens
                 agent_trace[agent.name] = output.result.model_dump()
+                logger.info(
+                    "%s phase complete. Tokens: %d",
+                    agent.name,
+                    output.tokens,
+                    extra=cid,
+                )
 
-            logger.info("Starting Synthesizer phase", extra={"cid": correlation_id})
+            logger.info("Starting Synthesizer phase", extra=cid)
             final_output = await self._synthesizer.run(shared_ctx)
             total_tokens += final_output.tokens
             agent_trace["Synthesizer"] = final_output.result.model_dump()
+            logger.info(
+                "Synthesizer phase complete. Tokens: %d. Verdict: %s",
+                final_output.tokens,
+                final_output.result.verdict,
+                extra=cid,
+            )
+
+            elapsed_s = time.monotonic() - start_time
+            logger.info(
+                "Analysis workflow completed successfully in %.2f seconds. Total tokens: %d",
+                elapsed_s,
+                total_tokens,
+                extra=cid,
+            )
 
             return AnalysisResult(
                 correlation_id=correlation_id,
@@ -111,7 +141,10 @@ class AnalysisWorkflow:
             )
 
         except Exception as e:
-            logger.exception(f"Workflow failed: {e}", extra={"cid": correlation_id})
+            elapsed_s = time.monotonic() - start_time
+            logger.exception(
+                "Workflow failed after %.2f seconds: %s", elapsed_s, e, extra=cid
+            )
             return AnalysisResult(
                 correlation_id=correlation_id,
                 ticker=request.ticker,

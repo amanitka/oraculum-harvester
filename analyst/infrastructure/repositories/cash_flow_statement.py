@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.infrastructure.models.cash_flow_statement import CashFlowStatementDB
 from common.domain.cash_flow_statement import CashFlowStatement
+from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
 
 class CashFlowStatementRepository:
@@ -17,6 +18,30 @@ class CashFlowStatementRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def fetch_ticker_history(
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int,
+    ) -> list[CashFlowStatementDB]:
+        """Return the most recent cash flow statements for a ticker."""
+        statement = (
+            select(CashFlowStatementDB)
+            .where(CashFlowStatementDB.ticker == ticker)
+            .where(CashFlowStatementDB.template == template)
+            .where(CashFlowStatementDB.variant == variant)
+            .order_by(
+                CashFlowStatementDB.fiscal_year.desc(),
+                CashFlowStatementDB.fiscal_period.desc(),
+                CashFlowStatementDB.report_date.desc(),
+            )
+            .limit(limit)
+        )
+        result = await self._session.exec(statement)
+        return list(result.all())
 
     async def upsert(self, statement: CashFlowStatement) -> CashFlowStatementDB:
         """Insert or fully refresh the row keyed by `composite_key`."""

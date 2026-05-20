@@ -9,7 +9,7 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.infrastructure.models.income_statement import IncomeStatementDB
-from common.domain.income_statement import IncomeStatement
+from common.domain.income_statement import IncomeStatement, StatementVariant, IncomeStatementTemplate
 
 
 class IncomeStatementRepository:
@@ -17,6 +17,30 @@ class IncomeStatementRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def fetch_ticker_history(
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int,
+    ) -> list[IncomeStatementDB]:
+        """Return the most recent income statements for a ticker."""
+        statement = (
+            select(IncomeStatementDB)
+            .where(IncomeStatementDB.ticker == ticker)
+            .where(IncomeStatementDB.template == template)
+            .where(IncomeStatementDB.variant == variant)
+            .order_by(
+                IncomeStatementDB.fiscal_year.desc(),
+                IncomeStatementDB.fiscal_period.desc(),
+                IncomeStatementDB.report_date.desc(),
+            )
+            .limit(limit)
+        )
+        result = await self._session.exec(statement)
+        return list(result.all())
 
     async def upsert(self, statement: IncomeStatement) -> IncomeStatementDB:
         """Insert or fully refresh the row keyed by `composite_key`."""

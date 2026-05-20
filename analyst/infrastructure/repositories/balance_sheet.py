@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.infrastructure.models.balance_sheet import BalanceSheetDB
 from common.domain.balance_sheet import BalanceSheet
+from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
 
 class BalanceSheetRepository:
@@ -17,6 +18,30 @@ class BalanceSheetRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def fetch_ticker_history(
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int,
+    ) -> list[BalanceSheetDB]:
+        """Return the most recent balance sheets for a ticker."""
+        statement = (
+            select(BalanceSheetDB)
+            .where(BalanceSheetDB.ticker == ticker)
+            .where(BalanceSheetDB.template == template)
+            .where(BalanceSheetDB.variant == variant)
+            .order_by(
+                BalanceSheetDB.fiscal_year.desc(),
+                BalanceSheetDB.fiscal_period.desc(),
+                BalanceSheetDB.report_date.desc(),
+            )
+            .limit(limit)
+        )
+        result = await self._session.exec(statement)
+        return list(result.all())
 
     async def upsert(self, statement: BalanceSheet) -> BalanceSheetDB:
         """Insert or fully refresh the row keyed by `composite_key`."""
