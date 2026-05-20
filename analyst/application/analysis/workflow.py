@@ -9,6 +9,7 @@ from analyst.application.agents.fundamentals import FundamentalsAgent
 from analyst.application.agents.planner import PlannerAgent
 from analyst.application.agents.risk import RiskAgent
 from analyst.application.agents.synthesizer import SynthesizerAgent
+from analyst.application.agents.share_price_signals import SharePriceSignalsAgent
 from analyst.application.agents.tools import DataTools
 from analyst.application.agents.valuation import ValuationAgent
 from analyst.application.analysis.models import AnalysisResult
@@ -35,6 +36,7 @@ class AnalysisWorkflow:
             CashFlowAgent(),
             ValuationAgent(),
             RiskAgent(),
+            SharePriceSignalsAgent(),
         ]
         self._synthesizer = SynthesizerAgent()
 
