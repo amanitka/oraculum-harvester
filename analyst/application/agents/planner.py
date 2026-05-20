@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
+from common.config import config
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "planner.md"
 _DEFAULT_ANALYSIS_FOCUS = (
@@ -70,7 +71,7 @@ class PlannerAgent(Agent[PlannerPlan]):
         response = await ctx.llm.complete(
             messages=messages,
             model="gemini-2.5-flash-lite",
-            max_tokens=350,
+            max_tokens=config.llm.max_tokens,
             temperature=0.1,
             response_format=self.output_model,
         )

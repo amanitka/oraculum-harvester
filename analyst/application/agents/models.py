@@ -1,18 +1,34 @@
 from typing import Any
 
-from pydantic import AliasChoices, BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
 from analyst.application.analysis.models import AnalysisVerdict
 
 _DEFAULT_RISK_SUMMARY = (
     "Risk profile is mixed; monitor leverage, liquidity, and free cash flow resilience."
 )
+_VERDICT_ALIASES: dict[str, AnalysisVerdict] = {
+    "bull": "bull",
+    "buy": "bull",
+    "bullish": "bull",
+    "bear": "bear",
+    "sell": "bear",
+    "bearish": "bear",
+    "neutral": "neutral",
+    "hold": "neutral",
+    "mixed": "neutral",
+}
 _DEFAULT_KEY_RISK = (
     "Signals are mixed; monitor leverage, liquidity, and free cash flow for deterioration."
 )
 _DEFAULT_KEY_SIGNALS_SUMMARY = (
     "No dominant signal identified; monitor momentum, valuation, and volume changes."
 )
+_DEFAULT_SYNTHESIZER_REPORT_MD = (
+    "# Executive Summary\n\nNo report body was generated. Review specialist outputs and rerun analysis."
+)
+_DEFAULT_SYNTHESIZER_VERDICT: AnalysisVerdict = "neutral"
+_DEFAULT_SYNTHESIZER_CONVICTION = 3
 _TEXT_PRIORITY_KEYS = (
     "summary",
     "takeaway",
@@ -55,6 +71,23 @@ def _coerce_to_text(value: Any) -> str:
         return " ".join(fragment for fragment in fragments if fragment)
 
     return _normalize_text(value)
+
+
+def _coerce_to_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+
+    if isinstance(value, list):
+        return [text for item in value if (text := _coerce_to_text(item))]
+
+    if isinstance(value, dict):
+        return [text for item in value.values() if (text := _coerce_to_text(item))]
+
+    text_value = _coerce_to_text(value)
+    if text_value:
+        return [text_value]
+
+    return []
 
 
 class FinancialFactSheet(BaseModel):
@@ -182,8 +215,100 @@ class RiskOutput(BaseModel):
 class SynthesizerOutput(BaseModel):
     """The structured output produced by the SynthesizerAgent."""
 
-    report_md: str = Field(description="The final analysis report in Markdown format.")
-    verdict: AnalysisVerdict = Field(description="The final investment verdict.")
-    conviction: int = Field(description="Conviction level of the verdict (1-5).", ge=1, le=5)
-    key_drivers: list[str] = Field(description="Key bullish drivers identified.")
-    key_risks: list[str] = Field(description="Key bearish risks identified.")
+    report_md: str = Field(
+        default=_DEFAULT_SYNTHESIZER_REPORT_MD,
+        description="The final analysis report in Markdown format.",
+    )
+    verdict: AnalysisVerdict = Field(
+        default=_DEFAULT_SYNTHESIZER_VERDICT,
+        description="The final investment verdict.",
+    )
+    conviction: int = Field(
+        default=_DEFAULT_SYNTHESIZER_CONVICTION,
+        description="Conviction level of the verdict (1-5).",
+        ge=1,
+        le=5,
+    )
+    key_drivers: list[str] = Field(
+        default_factory=list,
+        description="Key bullish drivers identified.",
+    )
+    key_risks: list[str] = Field(
+        default_factory=list,
+        description="Key bearish risks identified.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _flatten_nested_verdict_payload(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+
+        verdict_payload = value.get("verdict")
+        if not isinstance(verdict_payload, dict):
+            return value
+
+        flattened = dict(value)
+        decision = verdict_payload.get("decision") or verdict_payload.get("verdict")
+        if decision is not None:
+            flattened["verdict"] = decision
+
+        if flattened.get("conviction") is None and verdict_payload.get("conviction") is not None:
+            flattened["conviction"] = verdict_payload.get("conviction")
+
+        if flattened.get("key_drivers") is None and verdict_payload.get("key_drivers") is not None:
+            flattened["key_drivers"] = verdict_payload.get("key_drivers")
+
+        if flattened.get("key_risks") is None and verdict_payload.get("key_risks") is not None:
+            flattened["key_risks"] = verdict_payload.get("key_risks")
+
+        return flattened
+
+    @field_validator("report_md", mode="before")
+    @classmethod
+    def _coerce_report_md(cls, value: Any) -> str:
+        report_md = _coerce_to_text(value)
+        if report_md:
+            return report_md
+
+        return _DEFAULT_SYNTHESIZER_REPORT_MD
+
+    @field_validator("verdict", mode="before")
+    @classmethod
+    def _coerce_verdict(cls, value: Any) -> AnalysisVerdict:
+        if isinstance(value, dict):
+            value = value.get("decision") or value.get("verdict")
+
+        verdict_text = _coerce_to_text(value).lower()
+        return _VERDICT_ALIASES.get(verdict_text, _DEFAULT_SYNTHESIZER_VERDICT)
+
+    @field_validator("conviction", mode="before")
+    @classmethod
+    def _coerce_conviction(cls, value: Any) -> int:
+        conviction_value = _DEFAULT_SYNTHESIZER_CONVICTION
+
+        if value is None or isinstance(value, bool):
+            conviction_value = _DEFAULT_SYNTHESIZER_CONVICTION
+
+        elif isinstance(value, (int, float)):
+            conviction_value = int(value)
+
+        else:
+            conviction_text = _coerce_to_text(value).lower()
+            if conviction_text.isdigit() or (
+                conviction_text.startswith("-") and conviction_text[1:].isdigit()
+            ):
+                conviction_value = int(conviction_text)
+            elif conviction_text in {"low", "weak"}:
+                conviction_value = 1
+            elif conviction_text in {"medium", "moderate"}:
+                conviction_value = 3
+            elif conviction_text in {"high", "strong"}:
+                conviction_value = 5
+
+        return max(1, min(5, conviction_value))
+
+    @field_validator("key_drivers", "key_risks", mode="before")
+    @classmethod
+    def _coerce_key_lists(cls, value: Any) -> list[str]:
+        return _coerce_to_text_list(value)

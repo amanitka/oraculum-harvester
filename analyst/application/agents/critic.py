@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
+from common.config import config
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "critic.md"
 
@@ -57,7 +58,7 @@ class CriticAgent(Agent[CriticOutput]):
         response = await ctx.llm.complete(
             messages=messages,
             model="gemini-2.5-pro",
-            max_tokens=1024,
+            max_tokens=config.llm.max_tokens,
             temperature=0.1,
             response_format=self.output_model,
         )

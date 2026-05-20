@@ -4,6 +4,7 @@ from pathlib import Path
 from analyst.application.agents.base import Agent, AgentOutput
 from analyst.application.agents.context import AgentContext
 from analyst.application.agents.models import SynthesizerOutput
+from common.config import config
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "synthesizer.md"
 
@@ -52,7 +53,7 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
         response = await ctx.llm.complete(
             messages=messages,
             model="gemini-2.5-pro",
-            max_tokens=2048,
+            max_tokens=config.llm.max_tokens,
             temperature=0.3,
             response_format=self.output_model,
         )
