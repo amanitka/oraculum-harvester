@@ -16,8 +16,7 @@ Redesign the LLM execution layer to:
 
 ## 2. Core Architectural Changes
 
-We will introduce `LiteLLM` as a routing layer between the application and the various LLM providers. This library is
-purpose-built for this scenario.
+We will use the official `openai` Python SDK (which is compatible with many providers like Groq, Together, and local models) to route requests between the application and the various LLM providers, and use a custom failover logic loop based on configuration tiers.
 
 ### 2.1. Model Tiers (Aliases)
 
@@ -33,15 +32,11 @@ We will define three initial tiers:
 ### 2.2. Configuration-Driven Routing
 
 The `config.yaml` file will be the single source of truth for defining which models belong to which tier and in what
-priority order. `LiteLLM` will use this configuration to manage the routing.
+priority order. Our custom router will use this configuration to manage the routing.
 
 ## 3. Implementation Plan
 
-### Step 3.1: Add `litellm` Dependency
-
-First, add `litellm` to your project's dependencies, likely in `pyproject.toml`.
-
-### Step 3.2: Redesign `config.yaml`
+### Step 3.1: Redesign `config.yaml`
 
 The current `llm` section in `config.yaml` will be replaced with a more structured list of model deployments using the
 optimal models selected from your list.
@@ -57,48 +52,54 @@ llm:
     - alias: "flash-tier"
       model: "gemini/gemini-3.1-flash-lite-preview"
       api_key: ${GEMINI_API_KEY}
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Newest, agentic, and extremely cheap.
     - alias: "flash-tier"
-      model: "groq/llama-3.1-8b-instant-128k"
+      model: "llama-3.1-8b-instant"
       api_key: ${GROQ_API_KEY}
+      api_base: "https://api.groq.com/openai/v1"
       order: 2 # Fallback: Negligible cost and incredible speed.
 
     # --- Tier 2: Pro Models (for robust analysis) ---
     - alias: "pro-tier"
       model: "gemini/gemini-3.5-flash"
       api_key: ${GEMINI_API_KEY}
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Google's newest production model for agentic work.
     - alias: "pro-tier"
-      model: "groq/llama-3.3-70b-versatile-128k"
+      model: "llama-3.3-70b-versatile"
       api_key: ${GROQ_API_KEY}
+      api_base: "https://api.groq.com/openai/v1"
       order: 2 # Fallback: Powerful 70B model with great cost-performance.
 
     # --- Tier 3: Specialist Models (for critical synthesis) ---
     - alias: "specialist-tier"
       model: "gemini/gemini-3.1-pro"
       api_key: ${GEMINI_API_KEY}
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Flagship model for the most complex tasks.
     - alias: "specialist-tier"
-      model: "groq/llama-3.3-70b-versatile-128k"
+      model: "llama-3.3-70b-versatile"
       api_key: ${GROQ_API_KEY}
+      api_base: "https://api.groq.com/openai/v1"
       order: 2 # Fallback: Cross-provider failover to a powerful Groq model.
 
   # Global settings applied to all calls via the router
   router_settings:
     temperature: 0.0 # Enforce deterministic logic
     num_retries: 3
-    routing_strategy: "simple-shuffle" # simple-shuffle respects the 'order' field
+    routing_strategy: "priority" # Attempts models based on their 'order' value within the tier
 ```
 
-### Step 3.3: Update `common/config.py`
+### Step 3.2: Update `common/config.py`
 
 The `_LlmConfig` class will be updated to parse this new structure.
 
 ```python
 # In common/config.py
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List
 
 
 # ... other imports
@@ -107,13 +108,14 @@ class _LlmDeploymentConfig(BaseModel):
     alias: str
     model: str
     api_key: str
+    api_base: str
     order: int
 
 
 class _LlmRouterSettingsConfig(BaseModel):
     temperature: float = 0.0
     num_retries: int = 3
-    routing_strategy: str = "simple-shuffle"
+    routing_strategy: str = "priority"
 
 
 class _LlmConfig:
@@ -130,90 +132,67 @@ class _LlmConfig:
 # ... rest of the Config class remains the same
 ```
 
-### Step 3.4: Implement the `LiteLLM` Router
+### Step 3.3: Implement the Tier Router in `OpenAiClient`
 
-Create a new module, `common/llm/router.py`, to initialize the `LiteLLM` router based on the loaded configuration. This
-router will become our new `LlmClient`.
+Update `common/llm/openai_client.py` to route based on the requested model alias instead of the exact model name. The router must implement a `try-catch` and iterate through all deployments available for a given alias based on the `order` parameter until one succeeds.
 
 ```python
-# In a new file: common/llm/router.py
+# In common/llm/openai_client.py
 
-from litellm import Router
-from common.config import config
-from common.llm.base import LlmClient, LlmResponse  # Assuming you have these base classes
+from openai import AsyncOpenAI
+# ...
 
-
-class LiteLLMRouterClient(LlmClient):
-    """An LlmClient implementation powered by the LiteLLM router."""
-
-    def __init__(self):
-        model_list = [
-            {
-                "model_name": deployment.alias,
-                "litellm_params": {
-                    "model": deployment.model,
-                    "api_key": deployment.api_key,
-                },
-                "order": deployment.order,
-            }
-            for deployment in config.llm.deployments
-        ]
-
-        self._router = Router(
-            model_list=model_list,
-            routing_strategy=config.llm.router_settings.routing_strategy,
-            num_retries=config.llm.router_settings.num_retries,
-            # This ensures that if a call to "flash-tier" fails, it retries on other "flash-tier" models
-            fallbacks=[{d.alias: [d.alias]} for d in config.llm.deployments],
-        )
+class OpenAiClient(LlmClient):
+    """
+    An adapter for the official OpenAI SDK that implements the LlmClient interface and tier-based routing.
+    """
+    
+    # ...
 
     async def complete(
-            self,
-            messages: list[dict],
-            model: str,  # This will now be the alias, e.g., "flash-tier"
-            max_tokens: int,
-            temperature: float | None = None,
-            response_format: Any | None = None,  # Keep your existing signature
+        self,
+        messages: list[Mapping[str, Any]],
+        *,
+        model: str, # This will now be the alias, e.g., "flash-tier"
+        max_tokens: int,
+        temperature: float,
+        response_format: type[BaseModel] | dict[str, Any] | None = None,
     ) -> LlmResponse:
-        # Use global temperature from config, but allow per-call override
-        final_temperature = temperature if temperature is not None else config.llm.router_settings.temperature
-
-        response = await self._router.acompletion(
-            model=model,  # The alias acts as the key
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=final_temperature,
+        
+        # 1. Fetch deployments for the requested model alias, sorted by order
+        deployments = sorted(
+            [d for d in config.llm.deployments if d.alias == model],
+            key=lambda d: d.order
         )
-
-        # Adapt the LiteLLM response to your internal LlmResponse object
-        # This is an example, you'll need to map the fields correctly
-        return LlmResponse(
-            text=response.choices[0].message.content or "",
-            input_tokens=response.usage.prompt_tokens,
-            output_tokens=response.usage.completion_tokens,
-        )
+        
+        if not deployments:
+            raise ValueError(f"No deployments found for alias '{model}'")
+            
+        # 2. Loop through deployments and try to complete the request
+        last_exception = None
+        for deployment in deployments:
+            client = AsyncOpenAI(api_key=deployment.api_key, base_url=deployment.api_base)
+            
+            # Implementation using the retry logic from the previous code,
+            # but scoped to this specific deployment.
+            try:
+                # Add existing logic here, replacing self._client with the local client
+                # and using deployment.model instead of model.
+                pass 
+            except Exception as e:
+                logger.warning(f"Deployment {deployment.model} for tier {model} failed. Trying next.")
+                last_exception = e
+                continue
+                
+        raise RuntimeError(f"All deployments for tier {model} failed.") from last_exception
 
 ```
 
-### Step 3.5: Update Agent Context
+### Step 3.4: Update Agent Context
 
-In `analyst/application/agents/context_factory.py` (or wherever you instantiate your `AgentContext`), you will now
-provide the `LiteLLMRouterClient`.
+In `analyst/application/agents/context_factory.py` (or wherever you instantiate your `AgentContext`), no changes are required since it is already providing the `OpenAiClient`.
 
-```python
-# In your context factory...
-from common.llm.router import LiteLLMRouterClient
-
-# ...
-llm_client = LiteLLMRouterClient()
-agent_context = AgentContext(
-    # ... other parameters
-    llm=llm_client,
-    # ...
-)
-```
-
-### Step 3.6: Refactor Agents to Use Tiers
+### Step 3.5: Refactor Agents to Use Tiers
 
 Finally, update agents like `CashFlowAgent` to call the model alias instead of a hardcoded name.
 
@@ -242,11 +221,9 @@ class CashFlowAgent(Agent[CashFlowOutput]):
 
 ## 4. Per-Agent Configuration
 
-Your question about per-agent vs. global configuration is excellent. The proposed design provides the best of both
-worlds:
+The proposed design provides the best of both worlds:
 
-- **Centralized Configuration:** The `config.yaml` file remains the single source of truth for what "flash-tier" or "
-  pro-tier" means at any given time. You can swap `gemini` for `claude` in the config without touching any agent code.
+- **Centralized Configuration:** The `config.yaml` file remains the single source of truth for what "flash-tier" or "pro-tier" means at any given time. You can swap models in the config without touching any agent code.
 - **Decentralized Usage:** Each agent can independently decide which tier is appropriate for its task.
     - `CashFlowAgent` might use `flash-tier`.
     - `SynthesizerAgent` might require `pro-tier` for higher quality output.
