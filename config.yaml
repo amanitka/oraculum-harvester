@@ -42,31 +42,31 @@ llm:
   deployments:
     # --- Tier 1: Flash Models (for simple, high-volume tasks) ---
     - alias: "flash-tier"
-      model: "gemini/gemini-3.1-flash-lite"
+      model: "gemini-2.5-flash-lite"
       api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Newest, agentic, and extremely cheap.
     - alias: "flash-tier"
-      model: "gpt-oss-20b"
+      model: "gpt-4o-mini"
       api_key: ${OPENAI_API_KEY}
       api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: Ultra cost-effective OSS model.
+      order: 2 # Fallback: OpenAI's cost-effective model.
 
     # --- Tier 2: Pro Models (for robust analysis) ---
     - alias: "pro-tier"
-      model: "gemini/gemini-3-flash"
+      model: "gemini-2.5-flash"
       api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Google's newest production model for agentic work.
     - alias: "pro-tier"
-      model: "gpt-4.1-mini"
+      model: "gpt-4o"
       api_key: ${OPENAI_API_KEY}
       api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: Balanced and cost-effective model.
+      order: 2 # Fallback: Powerful OpenAI model.
 
     # --- Tier 3: Specialist Models (for critical synthesis) ---
     - alias: "specialist-tier"
-      model: "gemini/gemini-3.1-pro"
+      model: "gemini-3.1-pro-preview"
       api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Flagship model for the most complex tasks.

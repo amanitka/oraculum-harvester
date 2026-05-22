@@ -50,8 +50,16 @@ class OpenAiClient(LlmClient):
         if not deployments:
             raise ValueError(f"No deployments found for alias '{model}'")
 
+        logger.info("Executing LLM request for tier '%s' with %d deployments.", model, len(deployments))
+
         last_exception = None
-        for deployment in deployments:
+        for i, deployment in enumerate(deployments):
+            logger.info(
+                "Attempting deployment #%d: model='%s', base_url='%s'",
+                i + 1,
+                deployment.model,
+                deployment.api_base,
+            )
             client = AsyncOpenAI(api_key=deployment.api_key, base_url=deployment.api_base)
             try:
                 return await self._try_complete_with_deployment(

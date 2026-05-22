@@ -64,7 +64,7 @@ class AnalysisWorkflow:
             default_variant=request.default_variant,
             tools=self._tools,
             llm=self._llm,
-            token_budget=config.llm.workflow_token_budget,
+            token_budget=config.llm.router_settings.workflow_token_budget,
             prior_outputs={},
         )
 
@@ -89,7 +89,7 @@ class AnalysisWorkflow:
                 default_variant=request.default_variant,
                 tools=self._tools,
                 llm=self._llm,
-                token_budget=config.llm.workflow_token_budget,
+                token_budget=config.llm.router_settings.workflow_token_budget,
                 prior_outputs={},
             )
 
