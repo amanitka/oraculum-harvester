@@ -47,10 +47,10 @@ llm:
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Newest, agentic, and extremely cheap.
     - alias: "flash-tier"
-      model: "gpt-4o-mini"
+      model: "gpt-oss-20b"
       api_key: ${OPENAI_API_KEY}
       api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: OpenAI's cost-effective model.
+      order: 2 # Fallback: Ultra cost-effective OSS model.
 
     # --- Tier 2: Pro Models (for robust analysis) ---
     - alias: "pro-tier"
@@ -59,10 +59,10 @@ llm:
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Google's newest production model for agentic work.
     - alias: "pro-tier"
-      model: "gpt-4o"
+      model: "gpt-4.1-mini"
       api_key: ${OPENAI_API_KEY}
       api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: Powerful OpenAI model.
+      order: 2 # Fallback: Balanced and cost-effective model.
 
     # --- Tier 3: Specialist Models (for critical synthesis) ---
     - alias: "specialist-tier"

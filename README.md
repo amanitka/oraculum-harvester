@@ -17,18 +17,19 @@ FetchXxxRequest → [Kafka: oraculum.harvester.request]
 Two services:
 
 - **harvester** — consumes fetch requests, pulls data from SimFin, publishes domain events.
-- **analyst** — consumes domain events, persists them to PostgreSQL, and runs APScheduler jobs that publish periodic refresh requests to Kafka.
+- **analyst** — consumes domain events, persists them to PostgreSQL, and runs APScheduler jobs that publish periodic
+  refresh requests to Kafka.
 
 ---
 
 ## Prerequisites
 
-| Tool | Purpose |
-|---|---|
-| Python ≥ 3.14 | Runtime |
-| `uv` | Package manager / runner |
-| PostgreSQL ≥ 14 | Database |
-| Kafka ≥ 3.x | Message broker |
+| Tool            | Purpose                  |
+|-----------------|--------------------------|
+| Python ≥ 3.14   | Runtime                  |
+| `uv`            | Package manager / runner |
+| PostgreSQL ≥ 14 | Database                 |
+| Kafka ≥ 3.x     | Message broker           |
 
 ---
 
@@ -118,24 +119,24 @@ analysis for a given ticker from the UI.
 
 ## Triggering data ingestion
 
-Send a fetch request to the harvester request topic.  Example helper scripts
+Send a fetch request to the harvester request topic. Example helper scripts
 live in the repo root as `_send_fetch_*.py`.
 
 ### Tickers
+
 ```powershell
 uv run python _send_fetch_ticker.py
 ```
 
 ### Share prices — incremental (Kafka flow)
 
-The incremental flow sends a `FetchSharePriceRequest` to the harvester.  The
+The incremental flow sends a `FetchSharePriceRequest` to the harvester. The
 harvester loads SimFin data, filters to `trade_date >= from_date - safety_window_days`,
 chunks rows into batches of 500, and publishes them to the
-`oraculum.share_price_batch` topic.  The analyst consumes each batch and
+`oraculum.share_price_batch` topic. The analyst consumes each batch and
 bulk-upserts it into `t_share_price`.
 
 ```python
-# _send_fetch_share_price.py  (create manually or adapt from _send_fetch_ticker.py)
 from datetime import date
 from common.requests.share_price import FetchSharePriceRequest
 # publish FetchSharePriceRequest(market="us", from_date=date(2024, 1, 1))
@@ -151,6 +152,7 @@ uv run python scripts/load_share_prices_initial.py --market us --variant daily
 ```
 
 The script:
+
 1. Loads all SimFin share price data from the local cache.
 2. Creates any missing monthly partitions (1990-01 → now + 9 months).
 3. COPYs rows in chunks of 50 000 into a temporary staging table.
@@ -165,15 +167,15 @@ Re-running is safe — all rows are idempotent on `(ticker, market, trade_date)`
 
 ## Database object naming conventions
 
-| Prefix | Object type |
-|---|---|
-| `t_` | Tables |
-| `v_` | Views |
-| `pk_` | Primary keys |
-| `fk_` | Foreign keys |
-| `uq_` | Unique constraints |
-| `ix_` | Indexes |
-| `ck_` | Check constraints |
+| Prefix | Object type        |
+|--------|--------------------|
+| `t_`   | Tables             |
+| `v_`   | Views              |
+| `pk_`  | Primary keys       |
+| `fk_`  | Foreign keys       |
+| `uq_`  | Unique constraints |
+| `ix_`  | Indexes            |
+| `ck_`  | Check constraints  |
 
 ---
 
