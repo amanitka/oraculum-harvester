@@ -23,9 +23,7 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
     async def run(self, ctx: AgentContext) -> AgentOutput[SynthesizerOutput]:
         # Exclude FactSheet and Critic from the main prior outputs for synthesis
         specialist_outputs = {
-            name: model
-            for name, model in ctx.prior_outputs.items()
-            if name not in ["FactSheet", "Critic"]
+            name: model for name, model in ctx.prior_outputs.items() if name not in ["FactSheet", "Critic"]
         }
         prior_outputs_json = json.dumps(
             {name: model.model_dump() for name, model in specialist_outputs.items()},
@@ -60,5 +58,5 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
 
         result = self.output_model.model_validate_json(response.text)
         total_tokens = response.input_tokens + response.output_tokens
-        
+
         return AgentOutput(result=result, tokens=total_tokens)

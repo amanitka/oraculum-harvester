@@ -18,17 +18,32 @@ class FakeDataTools:
         return "general"
 
     async def get_income_statement_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return "fake income statement"
 
     async def get_balance_sheet_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return "fake balance sheet"
 
     async def get_cash_flow_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return "fake cash flow"
 
@@ -36,7 +51,12 @@ class FakeDataTools:
         return "fake prices"
 
     async def get_derived_metrics(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return "fake metrics"
 

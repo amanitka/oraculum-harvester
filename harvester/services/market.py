@@ -17,13 +17,13 @@ class MarketService:
             f"Processing market fetch request {request.correlation_id}",
             extra={"cid": request.correlation_id},
         )
-        
+
         try:
             markets = list(self._provider.fetch_markets())
             if not markets:
                 logger.warning("No markets found.", extra={"cid": request.correlation_id})
                 return
-                
+
             # For small static tables like market, we can just publish them all at once.
             # No need for Parquet batches.
             for m in markets:
@@ -32,13 +32,13 @@ class MarketService:
                     topic=config.topics.market,
                     key=m.market_id,
                 )
-            
+
             logger.info(
                 f"Published {len(markets)} markets to Kafka.",
                 extra={"cid": request.correlation_id},
             )
         except Exception as e:
             logger.exception(
-                f"Failed to process market request: {e}", 
-                extra={"cid": request.correlation_id}
+                f"Failed to process market request: {e}",
+                extra={"cid": request.correlation_id},
             )

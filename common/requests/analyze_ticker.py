@@ -22,9 +22,7 @@ class AnalyzeTickerRequest(Request):
     request_type: Literal["analyze_ticker"] = "analyze_ticker"
     ticker: str = Field(..., description="The ticker symbol to analyze (e.g., 'AAPL').")
     market: str = Field("us", description="The market code (e.g., 'us').")
-    as_of: date | None = Field(
-        None, description="The date for which to run the analysis, defaults to latest."
-    )
+    as_of: date | None = Field(None, description="The date for which to run the analysis, defaults to latest.")
     default_variant: StatementVariant = Field(
         "annual",
         description="The default statement variant (annual, quarterly, ttm) for agents to use.",

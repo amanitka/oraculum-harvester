@@ -23,15 +23,11 @@ class TickerService:
         """Materialise tickers in a worker thread, then publish to Parquet."""
         from harvester import publishers
 
-        tickers = await asyncio.to_thread(
-            lambda: list(self._provider.fetch_tickers(market=request.market))
-        )
+        tickers = await asyncio.to_thread(lambda: list(self._provider.fetch_tickers(market=request.market)))
 
         if tickers:
             run_id = str(request.correlation_id)
-            meta = await asyncio.to_thread(
-                write_to_parquet, models=tickers, dataset="ticker", run_id=run_id
-            )
+            meta = await asyncio.to_thread(write_to_parquet, models=tickers, dataset="ticker", run_id=run_id)
 
             event = DataFileReadyEvent(
                 dataset="ticker",

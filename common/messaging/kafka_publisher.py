@@ -52,6 +52,7 @@ class KafkaRequestPublisher:
                 await broker.publish(request, topic=topic, key=str(key) if key else None)
 
         import asyncio
+
         asyncio.run(_publish())
 
     async def publish(self, request: Request) -> None:

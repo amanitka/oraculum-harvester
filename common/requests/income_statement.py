@@ -24,6 +24,4 @@ class FetchIncomeStatementRequest(Request):
     request_type: Literal["fetch_income_statement"] = "fetch_income_statement"
     market: str = "us"
     variant: Literal["annual", "quarterly", "ttm"] = "annual"
-    templates: list[IncomeStatementTemplate] = Field(
-        default_factory=lambda: list(_ALL_TEMPLATES)
-    )
+    templates: list[IncomeStatementTemplate] = Field(default_factory=lambda: list(_ALL_TEMPLATES))

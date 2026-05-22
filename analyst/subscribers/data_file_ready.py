@@ -20,13 +20,9 @@ logger = logging.getLogger(__name__)
     group_id=config.analyst_consumer_group,
     auto_offset_reset="earliest",
 )
-async def on_data_file_ready(
-    event: DataFileReadyEvent, session: AsyncSession = Session()
-) -> None:
+async def on_data_file_ready(event: DataFileReadyEvent, session: AsyncSession = Session()) -> None:
     """Consume a data_file_ready event and load its Parquet payload into PostgreSQL."""
-    logger.info(
-        "Received data_file_ready for dataset=%s run_id=%s", event.dataset, event.run_id
-    )
+    logger.info("Received data_file_ready for dataset=%s run_id=%s", event.dataset, event.run_id)
 
     loader = ParquetLoader(session)
     await loader.load(event)

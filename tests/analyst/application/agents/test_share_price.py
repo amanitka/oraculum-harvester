@@ -10,9 +10,8 @@ from common.domain.income_statement import IncomeStatementTemplate, StatementVar
 from tests.common.llm.fake_llm_client import FakeLlmClient
 
 
-_DEFAULT_KEY_SIGNALS_SUMMARY = (
-    "No dominant signal identified; monitor momentum, valuation, and volume changes."
-)
+_DEFAULT_KEY_SIGNALS_SUMMARY = "No dominant signal identified; monitor momentum, valuation, and volume changes."
+
 
 class FakeDataTools:
     def get_ticker_profile(self, ticker: str) -> dict[str, str] | None:
@@ -22,17 +21,32 @@ class FakeDataTools:
         return "general"
 
     def get_income_statement_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return ""
 
     def get_balance_sheet_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return ""
 
     def get_cash_flow_history(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return ""
 
@@ -40,7 +54,12 @@ class FakeDataTools:
         return ""
 
     def get_derived_metrics(
-        self, ticker: str, *, template: IncomeStatementTemplate, variant: StatementVariant, limit: int = 100
+        self,
+        ticker: str,
+        *,
+        template: IncomeStatementTemplate,
+        variant: StatementVariant,
+        limit: int = 100,
     ) -> str:
         return ""
 
@@ -99,10 +118,7 @@ async def test_share_price_signals_agent_coerces_nested_fields_and_default_summa
 
     assert output.result.momentum_analysis == "Momentum remains positive."
     assert output.result.valuation_analysis == "Valuation is rich versus history."
-    assert (
-        output.result.historical_trend_analysis
-        == "Current multiples are above long-term averages."
-    )
+    assert output.result.historical_trend_analysis == "Current multiples are above long-term averages."
     assert output.result.key_signals_summary == _DEFAULT_KEY_SIGNALS_SUMMARY
 
 

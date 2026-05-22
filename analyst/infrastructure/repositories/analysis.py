@@ -17,7 +17,13 @@ class AnalysisRepository:
     def __init__(self, session: Session):
         self._session = session
 
-    def insert_pending(self, correlation_id: UUID, ticker: str, market: str, analysis_date: datetime.date) -> None:
+    def insert_pending(
+        self,
+        correlation_id: UUID,
+        ticker: str,
+        market: str,
+        analysis_date: datetime.date,
+    ) -> None:
         """Create a new analysis record in 'pending' state."""
         now = datetime.now(timezone.utc)
         analysis_db = AnalysisDB(
@@ -92,5 +98,7 @@ class AnalysisRepository:
 
     def list_by_status(self, status: AnalysisStatus, limit: int = 100) -> list[AnalysisDB]:
         """List analyses currently in a specific status."""
-        statement = select(AnalysisDB).where(AnalysisDB.status == status).order_by(AnalysisDB.created_at.asc()).limit(limit)
+        statement = (
+            select(AnalysisDB).where(AnalysisDB.status == status).order_by(AnalysisDB.created_at.asc()).limit(limit)
+        )
         return self._session.exec(statement).all()

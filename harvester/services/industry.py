@@ -17,13 +17,13 @@ class IndustryService:
             f"Processing industry fetch request {request.correlation_id}",
             extra={"cid": request.correlation_id},
         )
-        
+
         try:
             industries = list(self._provider.fetch_industries())
             if not industries:
                 logger.warning("No industries found.", extra={"cid": request.correlation_id})
                 return
-                
+
             # For small static tables like industry, we can just publish them all at once.
             for ind in industries:
                 await broker.publish(
@@ -31,13 +31,13 @@ class IndustryService:
                     topic=config.topics.industry,
                     key=ind.industry_id,
                 )
-            
+
             logger.info(
                 f"Published {len(industries)} industries to Kafka.",
                 extra={"cid": request.correlation_id},
             )
         except Exception as e:
             logger.exception(
-                f"Failed to process industry request: {e}", 
-                extra={"cid": request.correlation_id}
+                f"Failed to process industry request: {e}",
+                extra={"cid": request.correlation_id},
             )

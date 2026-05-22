@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 )
 async def on_industry(industry: Industry, session: AsyncSession = DependsSession()) -> None:
     logger.info(f"Received industry data for {industry.industry_id}")
-    
+
     def _upsert(sync_session):
         repo = IndustryRepository(sync_session)
         repo.upsert_batch([industry])
-        
+
     await session.run_sync(_upsert)
     await session.commit()

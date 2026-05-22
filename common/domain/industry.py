@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class Industry(BaseModel):
     """Domain model representing an industry and sector from SimFin."""
-    
+
     model_config = ConfigDict(populate_by_name=True)
-    
+
     industry_id: str = Field(..., alias="IndustryId")
     sector_name: str = Field(..., alias="Sector")
     industry_name: str = Field(..., alias="Industry")

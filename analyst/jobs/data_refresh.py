@@ -54,9 +54,7 @@ def _build_fundamentals_requests() -> list[Request]:
         for variant in _STATEMENT_VARIANTS:
             requests.append(FetchIncomeStatementRequest(market=market, variant=variant))
             requests.append(FetchBalanceSheetRequest(market=market, variant=variant))
-            requests.append(
-                FetchCashFlowStatementRequest(market=market, variant=variant)
-            )
+            requests.append(FetchCashFlowStatementRequest(market=market, variant=variant))
     return requests
 
 

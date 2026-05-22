@@ -41,15 +41,9 @@ class FactSheetAgent(Agent[FactSheetOutput]):
         balance_sheet_history = await ctx.tools.get_balance_sheet_history(
             ctx.ticker, template=ctx.template, variant=variant
         )
-        cash_flow_history = await ctx.tools.get_cash_flow_history(
-            ctx.ticker, template=ctx.template, variant=variant
-        )
-        derived_metrics = await ctx.tools.get_derived_metrics(
-            ctx.ticker, template=ctx.template, variant=variant
-        )
-        share_price_signals = await ctx.tools.get_share_price_signals(
-            ctx.ticker, ctx.market, ctx.as_of
-        )
+        cash_flow_history = await ctx.tools.get_cash_flow_history(ctx.ticker, template=ctx.template, variant=variant)
+        derived_metrics = await ctx.tools.get_derived_metrics(ctx.ticker, template=ctx.template, variant=variant)
+        share_price_signals = await ctx.tools.get_share_price_signals(ctx.ticker, ctx.market, ctx.as_of)
 
         fact_sheet = FinancialFactSheet(
             ticker_profile=ticker_profile if ticker_profile else {},

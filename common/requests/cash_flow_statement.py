@@ -28,6 +28,4 @@ class FetchCashFlowStatementRequest(Request):
     request_type: Literal["fetch_cash_flow_statement"] = "fetch_cash_flow_statement"
     market: str = "us"
     variant: Literal["annual", "quarterly", "ttm"] = "annual"
-    templates: list[CashFlowStatementTemplate] = Field(
-        default_factory=lambda: list(_ALL_TEMPLATES)
-    )
+    templates: list[CashFlowStatementTemplate] = Field(default_factory=lambda: list(_ALL_TEMPLATES))

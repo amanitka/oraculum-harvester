@@ -17,9 +17,7 @@ def test_cleanup_deletes_only_expired_files(tmp_path: Path) -> None:
     """Ensure cleanup removes old files while preserving fresh files."""
     now = datetime(2026, 5, 8, tzinfo=timezone.utc)
     root_path = tmp_path / "data"
-    old_parquet = _touch_file(
-        root_path / "shared" / "ticker" / "run_id=old" / "part-000.parquet", now, 4
-    )
+    old_parquet = _touch_file(root_path / "shared" / "ticker" / "run_id=old" / "part-000.parquet", now, 4)
     old_tmp = _touch_file(
         root_path / "shared" / "ticker" / "run_id=old_tmp" / "part-000.parquet.tmp",
         now,

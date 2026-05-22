@@ -39,8 +39,7 @@ class ValuationAgent(Agent[ValuationOutput]):
             {"role": "system", "content": prompt},
             {
                 "role": "user",
-                "content": f"Analyze the valuation for {ctx.ticker} as of {ctx.as_of} "
-                f"based on the provided financial fact sheet.",
+                "content": f"Analyze the valuation for {ctx.ticker} as of {ctx.as_of} based on the provided financial fact sheet.",
             },
         ]
 

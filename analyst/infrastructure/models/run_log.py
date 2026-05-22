@@ -16,11 +16,7 @@ class IngestionRunLogDB(SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Log of processed Parquet data file ready events to enforce idempotency."""
 
     __tablename__ = "t_ingestion_run_log"
-    __table_args__ = (
-        UniqueConstraint(
-            "dataset", "run_id", "file_checksum", name="uq_run_log_idempotency"
-        ),
-    )
+    __table_args__ = (UniqueConstraint("dataset", "run_id", "file_checksum", name="uq_run_log_idempotency"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     dataset: str = Field(index=True)

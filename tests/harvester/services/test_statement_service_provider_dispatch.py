@@ -75,7 +75,9 @@ def _install_service_fakes(monkeypatch: Any, service_module: Any) -> _DataFileRe
     return publishers.data_file_ready
 
 
-def test_balance_sheet_service_dispatches_to_singular_provider_method(monkeypatch: Any) -> None:
+def test_balance_sheet_service_dispatches_to_singular_provider_method(
+    monkeypatch: Any,
+) -> None:
     """Ensure balance sheet requests call the provider's singular fetch method."""
     publisher = _install_service_fakes(monkeypatch, balance_sheet_module)
     provider = _BalanceSheetProvider()
@@ -88,7 +90,9 @@ def test_balance_sheet_service_dispatches_to_singular_provider_method(monkeypatc
     assert publisher.events[0][1] == f"balance_sheet:{request.correlation_id}"
 
 
-def test_cash_flow_service_dispatches_to_singular_provider_method(monkeypatch: Any) -> None:
+def test_cash_flow_service_dispatches_to_singular_provider_method(
+    monkeypatch: Any,
+) -> None:
     """Ensure cash flow requests call the provider's singular fetch method."""
     publisher = _install_service_fakes(monkeypatch, cash_flow_statement_module)
     provider = _CashFlowStatementProvider()

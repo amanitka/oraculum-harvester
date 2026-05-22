@@ -74,7 +74,7 @@ def _parse_payload(payload_raw: str) -> dict[str, Any]:
 
     try:
         parsed_literal = ast.literal_eval(raw)
-    except (SyntaxError, ValueError):
+    except SyntaxError, ValueError:
         return {}
 
     return parsed_literal if isinstance(parsed_literal, dict) else {}
@@ -159,8 +159,7 @@ def _build_metric_guardrails(
         metrics[metric_name] = {
             "trend": _resolve_trend(deduplicated_series),
             "series_millions": [
-                {"fiscal_year": year, "value_millions": round(value, 3)}
-                for year, value in deduplicated_series
+                {"fiscal_year": year, "value_millions": round(value, 3)} for year, value in deduplicated_series
             ],
         }
 
@@ -171,14 +170,9 @@ def _build_quantitative_guardrails(cash_flow_history: str) -> dict[str, Any]:
     series_by_metric: dict[str, list[tuple[int, float]]] = {metric: [] for metric in _METRIC_ALIASES}
 
     for markdown_row in _parse_markdown_table(cash_flow_history):
-        normalized_row = {
-            _normalize_key(str(key)): value for key, value in markdown_row.items()
-        }
+        normalized_row = {_normalize_key(str(key)): value for key, value in markdown_row.items()}
         payload_raw = str(normalized_row.get("payload", ""))
-        payload = {
-            _normalize_key(str(key)): value
-            for key, value in _parse_payload(payload_raw).items()
-        }
+        payload = {_normalize_key(str(key)): value for key, value in _parse_payload(payload_raw).items()}
 
         year = _resolve_year(payload, normalized_row)
         if year is None:
@@ -241,8 +235,7 @@ class CashFlowAgent(Agent[CashFlowOutput]):
             {"role": "system", "content": prompt},
             {
                 "role": "user",
-                "content": f"Analyze cash flow for {ctx.ticker} as of {ctx.as_of} "
-                f"based on the provided financial fact sheet.",
+                "content": f"Analyze cash flow for {ctx.ticker} as of {ctx.as_of} based on the provided financial fact sheet.",
             },
         ]
 

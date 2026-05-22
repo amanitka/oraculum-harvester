@@ -20,23 +20,15 @@ class AnalysisResult(BaseModel):
     required by the UI to display the results.
     """
 
-    correlation_id: UUID = Field(
-        description="The unique identifier for this analysis run, linking request to result."
-    )
+    correlation_id: UUID = Field(description="The unique identifier for this analysis run, linking request to result.")
     ticker: str = Field(description="The ticker symbol analyzed.")
     market: str = Field(description="The market of the ticker (e.g., 'us').")
-    analysis_date: date = Field(
-        description="The date for which the analysis was performed, typically 'today'."
-    )
+    analysis_date: date = Field(description="The date for which the analysis was performed, typically 'today'.")
     status: AnalysisStatus = Field(description="The current status of the analysis.")
 
     # Payload fields, populated on completion
-    report_md: str | None = Field(
-        default=None, description="The final analysis report in Markdown format."
-    )
-    verdict: AnalysisVerdict | None = Field(
-        default=None, description="The final investment verdict."
-    )
+    report_md: str | None = Field(default=None, description="The final analysis report in Markdown format.")
+    verdict: AnalysisVerdict | None = Field(default=None, description="The final investment verdict.")
     conviction: int | None = Field(
         default=None,
         description="Conviction level of the verdict, from 1 (low) to 5 (high).",
@@ -44,10 +36,12 @@ class AnalysisResult(BaseModel):
         le=5,
     )
     key_drivers: list[str] = Field(
-        default_factory=list, description="Key bullish drivers identified by the workflow."
+        default_factory=list,
+        description="Key bullish drivers identified by the workflow.",
     )
     key_risks: list[str] = Field(
-        default_factory=list, description="Key bearish risks identified by the workflow."
+        default_factory=list,
+        description="Key bearish risks identified by the workflow.",
     )
 
     # Metadata and audit fields
@@ -55,15 +49,7 @@ class AnalysisResult(BaseModel):
         default_factory=dict,
         description="A structured trace of intermediate agent outputs for debugging and audit.",
     )
-    token_usage: int = Field(
-        default=0, description="Total LLM tokens consumed during the analysis."
-    )
-    error: str | None = Field(
-        default=None, description="Error message if the analysis failed."
-    )
-    created_at: datetime = Field(
-        description="Timestamp (UTC) when the analysis was requested."
-    )
-    updated_at: datetime = Field(
-        description="Timestamp (UTC) when the analysis was last updated."
-    )
+    token_usage: int = Field(default=0, description="Total LLM tokens consumed during the analysis.")
+    error: str | None = Field(default=None, description="Error message if the analysis failed.")
+    created_at: datetime = Field(description="Timestamp (UTC) when the analysis was requested.")
+    updated_at: datetime = Field(description="Timestamp (UTC) when the analysis was last updated.")

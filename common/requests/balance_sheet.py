@@ -24,6 +24,4 @@ class FetchBalanceSheetRequest(Request):
     request_type: Literal["fetch_balance_sheet"] = "fetch_balance_sheet"
     market: str = "us"
     variant: Literal["annual", "quarterly", "ttm"] = "annual"
-    templates: list[BalanceSheetTemplate] = Field(
-        default_factory=lambda: list(_ALL_TEMPLATES)
-    )
+    templates: list[BalanceSheetTemplate] = Field(default_factory=lambda: list(_ALL_TEMPLATES))

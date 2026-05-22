@@ -44,7 +44,7 @@ class SharePrice(BaseModel):
         try:
             if pd.isna(v):
                 return None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             pass
         return v
 

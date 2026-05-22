@@ -28,7 +28,7 @@ class MarketProvider:
         # Added refresh_days parameter from config
         df = sf.load_markets(refresh_days=config.simfin_refresh_days).reset_index()
         extracted_at = datetime.now(timezone.utc)
-        
+
         published = 0
         skipped = 0
 
@@ -39,7 +39,7 @@ class MarketProvider:
                 yield market
             else:
                 skipped += 1
-                
+
         logger.info(f"Market load summary: published={published} skipped={skipped}")
 
     @staticmethod

@@ -200,10 +200,16 @@ def _render_statement_form(
 def _render_refresh_tab() -> None:
     """Render the manual refresh controls."""
     st.caption(
-        "Use these controls to queue refresh requests to Kafka. "
-        "The harvester consumes them from the configured request topic."
+        "Use these controls to queue refresh requests to Kafka. The harvester consumes them from the configured request topic."
     )
-    metadata_tab, ticker_tab, share_price_tab, income_tab, balance_tab, cash_flow_tab = st.tabs(
+    (
+        metadata_tab,
+        ticker_tab,
+        share_price_tab,
+        income_tab,
+        balance_tab,
+        cash_flow_tab,
+    ) = st.tabs(
         [
             "Metadata",
             "Ticker",
@@ -250,7 +256,7 @@ def _render_analysis_tab() -> None:
 
     with run_col:
         st.subheader("Run new analysis")
-        
+
         # We need a session to query markets and tickers
         with Session(engine) as session:
             # Get distinct markets from the ticker table directly
@@ -262,30 +268,27 @@ def _render_analysis_tab() -> None:
             # The market selection happens *outside* the form so it triggers a re-render immediately
             # allowing the ticker selectbox to update its options.
             selected_market = st.selectbox(
-                "Filter by Market (Optional)", 
-                options=["All"] + market_options, # Provide an "All" option
-                index=1 if "us" in market_options else 0 # Default to "us" if present
+                "Filter by Market (Optional)",
+                options=["All"] + market_options,  # Provide an "All" option
+                index=1 if "us" in market_options else 0,  # Default to "us" if present
             )
 
             # Query tickers based on the selected market
             stmt_tickers = select(TickerDB).order_by(TickerDB.ticker.asc())
             if selected_market != "All":
                 stmt_tickers = stmt_tickers.where(TickerDB.market == selected_market)
-            
+
             tickers = session.execute(stmt_tickers).scalars().all()
-            
+
             # Create a dictionary mapping the display string to the actual ticker object
             # e.g. "AAPL - Apple Inc." -> TickerDB
-            ticker_options_map = {
-                f"{t.ticker.upper()} - {t.company_name or 'Unknown'}": t 
-                for t in tickers
-            }
+            ticker_options_map = {f"{t.ticker.upper()} - {t.company_name or 'Unknown'}": t for t in tickers}
 
         with st.form("run_analysis_form"):
             # Provide the selectbox inside the form if tickers are available
             if ticker_options_map:
                 selected_display = st.selectbox("Select Ticker", options=list(ticker_options_map.keys()))
-                
+
                 # We extract the actual ticker string and market from the mapped object
                 if selected_display:
                     selected_ticker_obj = ticker_options_map[selected_display]
@@ -310,7 +313,7 @@ def _render_analysis_tab() -> None:
                     # Clean inputs before sending
                     clean_ticker = final_ticker.strip().upper()
                     clean_market = final_market.strip().lower()
-                    
+
                     cid = trigger.trigger_analysis(clean_ticker, clean_market)
                     st.success(f"Analysis triggered for {clean_ticker}! ID: {cid}")
                 except Exception as e:
@@ -318,7 +321,7 @@ def _render_analysis_tab() -> None:
 
     with list_col:
         st.subheader("Recent analyses")
-        
+
         with Session(engine) as session:
             repo = AnalysisRepository(session)
             running_count = repo.get_running_count()
@@ -331,8 +334,7 @@ def _render_analysis_tab() -> None:
                         st.rerun()
                 with status_col:
                     st.caption(
-                        f"{running_count} analysis run(s) pending or running. "
-                        "Click Refresh to load the latest status."
+                        f"{running_count} analysis run(s) pending or running. Click Refresh to load the latest status."
                     )
 
             if not analyses:
@@ -351,62 +353,68 @@ def _render_analysis_tab() -> None:
                     }
                 )
             df = pd.DataFrame(data)
-            
+
             # Make sure we maintain a persistent state for the selected row
             # If the dataframe is redrawn, Streamlit resets selection if we don't manage it carefully.
             # Using an empty selection by default is safer for avoiding display bugs if rows shift.
-            
+
             event = st.dataframe(
                 df,
                 width="stretch",
                 hide_index=True,
                 on_select="rerun",
                 selection_mode="single-row",
-                key="analyses_dataframe"
+                key="analyses_dataframe",
             )
-            
+
             selected_rows = event.selection.rows
-            
+
             # If the user clicked a row, use that index.
             # If nothing is selected, we simply don't display the detailed view at the bottom.
             if selected_rows:
                 selected_idx = selected_rows[0]
-            
+
                 # Display details for the selected index
                 if 0 <= selected_idx < len(df):
                     selected_id = UUID(df.iloc[selected_idx]["ID"])
-                    
+
                     detail = repo.get_by_correlation_id(selected_id)
                     if detail:
                         st.markdown("---")
                         st.subheader(f"Analysis for {detail.ticker.upper()}")
-                        
+
                         status_color = {
                             "completed": "green",
                             "failed": "red",
                             "running": "blue",
-                            "pending": "gray"
+                            "pending": "gray",
                         }.get(detail.status, "gray")
-                        
+
                         st.markdown(f"**Status:** :{status_color}[{detail.status.upper()}]")
-                        
+
                         if detail.status == "completed":
                             col1, col2 = st.columns(2)
                             with col1:
-                                st.metric("Verdict", detail.verdict.upper() if detail.verdict else "N/A")
+                                st.metric(
+                                    "Verdict",
+                                    detail.verdict.upper() if detail.verdict else "N/A",
+                                )
                             with col2:
-                                st.metric("Conviction", f"{detail.conviction} / 5" if detail.conviction else "N/A")
-                            
+                                st.metric(
+                                    "Conviction",
+                                    f"{detail.conviction} / 5" if detail.conviction else "N/A",
+                                )
+
                             st.markdown("### Report")
                             st.markdown(detail.report_md)
-                            
+
                             if detail.payload:
                                 with st.expander("Show Traces & Drivers"):
                                     st.json(detail.payload)
-                                    
+
                         elif detail.status == "failed":
                             st.error(detail.error or "Unknown error")
-                            
+
                         elif detail.status in ("pending", "running"):
                             st.info("Analysis is currently running. Please wait...")
             else:

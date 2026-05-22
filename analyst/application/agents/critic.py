@@ -16,9 +16,7 @@ class CriticOutput(BaseModel):
     contradictions_found: list[str] = Field(
         description="A list of contradictions or inconsistencies found between the specialist agent outputs."
     )
-    is_consistent: bool = Field(
-        description="A boolean flag indicating whether the analyses are consistent."
-    )
+    is_consistent: bool = Field(description="A boolean flag indicating whether the analyses are consistent.")
 
 
 class CriticAgent(Agent[CriticOutput]):
@@ -34,11 +32,7 @@ class CriticAgent(Agent[CriticOutput]):
 
     async def run(self, ctx: AgentContext) -> AgentOutput[CriticOutput]:
         # Exclude the FactSheet from the outputs sent to the critic
-        specialist_outputs = {
-            name: model
-            for name, model in ctx.prior_outputs.items()
-            if name != "FactSheet"
-        }
+        specialist_outputs = {name: model for name, model in ctx.prior_outputs.items() if name != "FactSheet"}
         prior_outputs_json = json.dumps(
             {name: model.model_dump() for name, model in specialist_outputs.items()},
             indent=2,
@@ -50,8 +44,7 @@ class CriticAgent(Agent[CriticOutput]):
             {"role": "system", "content": prompt},
             {
                 "role": "user",
-                "content": f"Critique the analysis for {ctx.ticker}. "
-                "Identify any contradictions between the provided agent summaries.",
+                "content": f"Critique the analysis for {ctx.ticker}. Identify any contradictions between the provided agent summaries.",
             },
         ]
 

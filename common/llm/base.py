@@ -12,12 +12,8 @@ class LlmResponse(BaseModel):
     text: str = Field(description="The generated text response from the LLM.")
     model: str = Field(description="The model name that serviced the request.")
     input_tokens: int = Field(default=0, description="Number of tokens in the prompt.")
-    output_tokens: int = Field(
-        default=0, description="Number of tokens in the completion."
-    )
-    latency_ms: int = Field(
-        default=0, description="Time taken to generate the response in milliseconds."
-    )
+    output_tokens: int = Field(default=0, description="Number of tokens in the completion.")
+    latency_ms: int = Field(default=0, description="Time taken to generate the response in milliseconds.")
     finish_reason: str | None = Field(
         default=None,
         description="Provider-specific finish reason for the completion, when available.",

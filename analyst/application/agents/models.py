@@ -4,9 +4,7 @@ from pydantic import AliasChoices, BaseModel, Field, field_validator, model_vali
 
 from analyst.application.analysis.models import AnalysisVerdict
 
-_DEFAULT_RISK_SUMMARY = (
-    "Risk profile is mixed; monitor leverage, liquidity, and free cash flow resilience."
-)
+_DEFAULT_RISK_SUMMARY = "Risk profile is mixed; monitor leverage, liquidity, and free cash flow resilience."
 _VERDICT_ALIASES: dict[str, AnalysisVerdict] = {
     "bull": "bull",
     "buy": "bull",
@@ -18,12 +16,8 @@ _VERDICT_ALIASES: dict[str, AnalysisVerdict] = {
     "hold": "neutral",
     "mixed": "neutral",
 }
-_DEFAULT_KEY_RISK = (
-    "Signals are mixed; monitor leverage, liquidity, and free cash flow for deterioration."
-)
-_DEFAULT_KEY_SIGNALS_SUMMARY = (
-    "No dominant signal identified; monitor momentum, valuation, and volume changes."
-)
+_DEFAULT_KEY_RISK = "Signals are mixed; monitor leverage, liquidity, and free cash flow for deterioration."
+_DEFAULT_KEY_SIGNALS_SUMMARY = "No dominant signal identified; monitor momentum, valuation, and volume changes."
 _DEFAULT_SYNTHESIZER_REPORT_MD = (
     "# Executive Summary\n\nNo report body was generated. Review specialist outputs and rerun analysis."
 )
@@ -295,9 +289,7 @@ class SynthesizerOutput(BaseModel):
 
         else:
             conviction_text = _coerce_to_text(value).lower()
-            if conviction_text.isdigit() or (
-                conviction_text.startswith("-") and conviction_text[1:].isdigit()
-            ):
+            if conviction_text.isdigit() or (conviction_text.startswith("-") and conviction_text[1:].isdigit()):
                 conviction_value = int(conviction_text)
             elif conviction_text in {"low", "weak"}:
                 conviction_value = 1

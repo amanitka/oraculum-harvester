@@ -14,7 +14,7 @@ class IndustryDB(SQLModel, table=True):
     sector_name: str
     industry_name: str
     statement_template: str = Field(
-        default="general", 
-        description="The mapped SimFin statement template for this industry."
+        default="general",
+        description="The mapped SimFin statement template for this industry.",
     )
     extracted_at: datetime

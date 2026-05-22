@@ -174,13 +174,11 @@ def _is_missing(value: object) -> bool:
         return not value.strip()
     try:
         return bool(pd.isna(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False
 
 
-def _prepare_rows(
-    df: pd.DataFrame, market: str, extracted_at: datetime
-) -> Iterator[tuple]:
+def _prepare_rows(df: pd.DataFrame, market: str, extracted_at: datetime) -> Iterator[tuple]:
     """Yield one COPY-ready tuple per DataFrame row with NaN coerced to None."""
     df = df.rename(columns=_SIMFIN_COLUMN_MAP)
     df["market"] = market
@@ -227,10 +225,7 @@ def _ensure_partitions(conn: psycopg.Connection) -> None:
     end = _add_months(date(today.year, today.month, 1), _MONTHS_AHEAD + 1)
 
     with conn.cursor() as cur:
-        cur.execute(
-            "SELECT tablename FROM pg_tables"
-            " WHERE schemaname = 'public' AND tablename LIKE 't_share_price_%'"
-        )
+        cur.execute("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 't_share_price_%'")
         existing = {row[0] for row in cur.fetchall()}
 
     current = date(_HISTORICAL_START.year, _HISTORICAL_START.month, 1)
@@ -273,15 +268,9 @@ def _copy_chunk(conn: psycopg.Connection, chunk: list[tuple]) -> None:
 
 def main() -> None:
     """Entry point: parse args, load data, bulk-upsert into t_share_price."""
-    parser = argparse.ArgumentParser(
-        description="Bulk-load SimFin share prices into PostgreSQL."
-    )
-    parser.add_argument(
-        "--market", default=_DEFAULT_MARKET, help="SimFin market (default: us)"
-    )
-    parser.add_argument(
-        "--variant", default=_DEFAULT_VARIANT, help="SimFin variant (default: daily)"
-    )
+    parser = argparse.ArgumentParser(description="Bulk-load SimFin share prices into PostgreSQL.")
+    parser.add_argument("--market", default=_DEFAULT_MARKET, help="SimFin market (default: us)")
+    parser.add_argument("--variant", default=_DEFAULT_VARIANT, help="SimFin variant (default: daily)")
     args = parser.parse_args()
 
     _patch_pandas()

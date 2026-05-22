@@ -8,9 +8,7 @@ from common.domain.income_statement import IncomeStatementTemplate, StatementVar
 from common.config import config
 
 _PROMPT_PATH = Path(__file__).parent / "prompts" / "planner.md"
-_DEFAULT_ANALYSIS_FOCUS = (
-    "Prioritize recent momentum shifts, valuation dislocations, and unusual volume signals."
-)
+_DEFAULT_ANALYSIS_FOCUS = "Prioritize recent momentum shifts, valuation dislocations, and unusual volume signals."
 
 
 class PlannerPlan(BaseModel):
@@ -25,15 +23,11 @@ class PlannerPlan(BaseModel):
     cash_flow_variant: StatementVariant = Field(
         default="annual", description="The variant to use for cash flow analysis."
     )
-    valuation_variant: StatementVariant = Field(
-        default="ttm", description="The variant to use for valuation analysis."
-    )
-    risk_variant: StatementVariant = Field(
-        default="quarterly", description="The variant to use for risk analysis."
-    )
+    valuation_variant: StatementVariant = Field(default="ttm", description="The variant to use for valuation analysis.")
+    risk_variant: StatementVariant = Field(default="quarterly", description="The variant to use for risk analysis.")
     analysis_focus: str = Field(
         default=_DEFAULT_ANALYSIS_FOCUS,
-        description="A one-sentence description of what to focus on, based on recent share price signals."
+        description="A one-sentence description of what to focus on, based on recent share price signals.",
     )
 
 
@@ -51,9 +45,7 @@ class PlannerAgent(Agent[PlannerPlan]):
     async def run(self, ctx: AgentContext) -> AgentOutput[PlannerPlan]:
         profile = await ctx.tools.get_ticker_profile(ctx.ticker) or {}
         resolved_template = await ctx.tools.resolve_template(ctx.ticker)
-        share_price_signals = await ctx.tools.get_share_price_signals(
-            ctx.ticker, ctx.market, ctx.as_of
-        )
+        share_price_signals = await ctx.tools.get_share_price_signals(ctx.ticker, ctx.market, ctx.as_of)
 
         prompt = self.system_prompt.replace("{{ market_signals_json }}", share_price_signals)
 

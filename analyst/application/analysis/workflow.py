@@ -52,11 +52,9 @@ class AnalysisWorkflow:
         total_tokens = 0
         agent_trace = {}
         now = datetime.now(timezone.utc)
-        
+
         cid = {"cid": correlation_id}
-        logger.info(
-            "Starting analysis workflow for ticker %s", request.ticker, extra=cid
-        )
+        logger.info("Starting analysis workflow for ticker %s", request.ticker, extra=cid)
 
         initial_ctx = AgentContext(
             ticker=request.ticker,
@@ -164,9 +162,7 @@ class AnalysisWorkflow:
 
         except Exception as e:
             elapsed_s = time.monotonic() - start_time
-            logger.exception(
-                "Workflow failed after %.2f seconds: %s", elapsed_s, e, extra=cid
-            )
+            logger.exception("Workflow failed after %.2f seconds: %s", elapsed_s, e, extra=cid)
             return AnalysisResult(
                 correlation_id=correlation_id,
                 ticker=request.ticker,

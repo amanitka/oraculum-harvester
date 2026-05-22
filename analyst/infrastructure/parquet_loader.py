@@ -78,10 +78,7 @@ class ParquetLoader:
 
         # Convert to dict and replace any pandas NA/NaN/NaT with None
         raw_records = df.to_dict(orient="records")
-        records = [
-            {k: (None if pd.isna(v) else v) for k, v in row.items()}
-            for row in raw_records
-        ]
+        records = [{k: (None if pd.isna(v) else v) for k, v in row.items()} for row in raw_records]
 
         stg_table = f"stg_{event.dataset}"
 

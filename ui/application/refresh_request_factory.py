@@ -119,15 +119,9 @@ def _validate_templates(
         raise ValueError(f"Select at least one template for {request_label} refresh.")
 
     normalized_templates = [template.strip().lower() for template in templates]
-    invalid_templates = [
-        template
-        for template in normalized_templates
-        if template not in STATEMENT_TEMPLATES
-    ]
+    invalid_templates = [template for template in normalized_templates if template not in STATEMENT_TEMPLATES]
     if invalid_templates:
-        raise ValueError(
-            "Unsupported template values: " + ", ".join(sorted(set(invalid_templates)))
-        )
+        raise ValueError("Unsupported template values: " + ", ".join(sorted(set(invalid_templates))))
     return [cast(StatementTemplate, template) for template in normalized_templates]
 
 

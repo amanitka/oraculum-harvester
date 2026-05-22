@@ -18,9 +18,7 @@ class _CapturingSession:
     def __init__(self) -> None:
         self.calls: list[tuple[Any, list[dict[str, Any]] | None]] = []
 
-    async def exec(
-        self, statement: Any, params: list[dict[str, Any]] | None = None
-    ) -> None:
+    async def exec(self, statement: Any, params: list[dict[str, Any]] | None = None) -> None:
         self.calls.append((statement, params))
 
 
@@ -42,9 +40,7 @@ def _statement_record() -> dict[str, Any]:
     }
 
 
-def _find_insert_statement(
-    session: _CapturingSession, records: list[dict[str, Any]]
-) -> Any:
+def _find_insert_statement(session: _CapturingSession, records: list[dict[str, Any]]) -> Any:
     for statement, params in session.calls:
         if params is records:
             return statement

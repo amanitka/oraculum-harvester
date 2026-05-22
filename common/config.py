@@ -18,9 +18,7 @@ class _AnalystRefreshConfig:
 
     def __init__(self, source: EnvYAML) -> None:
         self.price_cron: str = source.get("analyst.refresh.priceCron", "0 7 * * *")
-        self.fundamentals_cron: str = source.get(
-            "analyst.refresh.fundamentalsCron", "0 0 * * 0"
-        )
+        self.fundamentals_cron: str = source.get("analyst.refresh.fundamentalsCron", "0 0 * * 0")
         self.ticker_cron: str = source.get("analyst.refresh.tickerCron", "0 0 1 * *")
 
 
@@ -29,12 +27,8 @@ class _AnalystCleanupConfig:
 
     def __init__(self, source: EnvYAML) -> None:
         retention_key = "analyst.cleanup.dataRetentionDays"
-        self.data_cleanup_cron: str = source.get(
-            "analyst.cleanup.dataCleanupCron", "0 3 * * *"
-        )
-        self.data_retention_days: int = self._positive_int(
-            source.get(retention_key, 3), retention_key
-        )
+        self.data_cleanup_cron: str = source.get("analyst.cleanup.dataCleanupCron", "0 3 * * *")
+        self.data_retention_days: int = self._positive_int(source.get(retention_key, 3), retention_key)
 
     @staticmethod
     def _positive_int(value: object, key: str) -> int:
@@ -60,9 +54,7 @@ class _KafkaTopicsConfig:
         self.analyst_request: str = source.get("kafka.topics.analystRequest")
         self.market: str = source.get("kafka.topics.market")
         self.industry: str = source.get("kafka.topics.industry")
-        self.data_file_ready: str = source.get(
-            "kafka.topics.dataFileReady", "oraculum.data_file_ready"
-        )
+        self.data_file_ready: str = source.get("kafka.topics.dataFileReady", "oraculum.data_file_ready")
 
 
 class _LlmConfig:
@@ -73,12 +65,8 @@ class _LlmConfig:
         self.model: str = source.get("llm.model", "gemini-1.5-flash-latest")
         self.api_key: str = source.get("llm.api_key")
         self.api_base: str = source.get("llm.api_base", "https://generativelanguage.googleapis.com/v1beta/")
-        self.max_tokens: int = self._positive_int(
-            source.get("llm.maxTokens", 8192), "llm.maxTokens"
-        )
-        self.temperature: float = self._positive_float(
-            source.get("llm.temperature", 0.2), "llm.temperature"
-        )
+        self.max_tokens: int = self._positive_int(source.get("llm.maxTokens", 8192), "llm.maxTokens")
+        self.temperature: float = self._positive_float(source.get("llm.temperature", 0.2), "llm.temperature")
         self.workflow_token_budget: int = self._positive_int(
             source.get("llm.workflowTokenBudget", 100000), "llm.workflowTokenBudget"
         )
@@ -116,28 +104,24 @@ class Config:
         )
         self._source = source
         self.simfin_api_key: str = source.get("simfin.apiKey")
-        self.simfin_chunk_size: int = self._positive_int(
-            source.get("simfin.chunkSize", 500000), "simfin.chunkSize"
-        )
-        self.simfin_refresh_days: int = self._positive_int(
-            source.get("simfin.refreshDays", 1), "simfin.refreshDays"
-        )
+        self.simfin_chunk_size: int = self._positive_int(source.get("simfin.chunkSize", 500000), "simfin.chunkSize")
+        self.simfin_refresh_days: int = self._positive_int(source.get("simfin.refreshDays", 1), "simfin.refreshDays")
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
-        
-        # Resolve data paths relative to the project root to avoid issues when 
+
+        # Resolve data paths relative to the project root to avoid issues when
         # starting services from different working directories.
         raw_data_path = source.get("harvester.dataPath", "./data")
         self.harvester_data_path: Path = _ROOT_DIR / Path(raw_data_path)
-        
+
         self.database_url: str = source.get("database.url")
         self.analyst_consumer_group: str = source.get("analyst.consumerGroup")
         self.analyst_refresh: _AnalystRefreshConfig = _AnalystRefreshConfig(source)
         self.analyst_cleanup: _AnalystCleanupConfig = _AnalystCleanupConfig(source)
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
         self.llm: _LlmConfig = _LlmConfig(source)
-        
+
         raw_shared_path = source.get("shared.folderPath", "./data/shared/simfin")
         self.shared_folder_path: Path = _ROOT_DIR / Path(raw_shared_path)
         self.shared_folder_path.mkdir(parents=True, exist_ok=True)
@@ -160,5 +144,6 @@ class Config:
         if parsed < 0:
             raise ValueError(f"{key} must be a positive integer")
         return parsed
+
 
 config: Config = Config()

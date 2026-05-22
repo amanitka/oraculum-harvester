@@ -9,12 +9,8 @@ from analyst.application.agents.risk import RiskAgent
 from tests.analyst.application.agents.test_fundamentals import FakeDataTools
 from tests.common.llm.fake_llm_client import FakeLlmClient
 
-_DEFAULT_KEY_RISK = (
-    "Signals are mixed; monitor leverage, liquidity, and free cash flow for deterioration."
-)
-_DEFAULT_RISK_SUMMARY = (
-    "Risk profile is mixed; monitor leverage, liquidity, and free cash flow resilience."
-)
+_DEFAULT_KEY_RISK = "Signals are mixed; monitor leverage, liquidity, and free cash flow for deterioration."
+_DEFAULT_RISK_SUMMARY = "Risk profile is mixed; monitor leverage, liquidity, and free cash flow resilience."
 
 
 def _build_context(llm: FakeLlmClient) -> AgentContext:
@@ -52,9 +48,7 @@ async def test_risk_agent_success() -> None:
     output = await RiskAgent().run(ctx)
 
     assert len(output.result.key_risks) == 3
-    assert output.result.summary == (
-        "Risk profile is elevated due to weaker liquidity and funding pressure."
-    )
+    assert output.result.summary == ("Risk profile is elevated due to weaker liquidity and funding pressure.")
     assert output.tokens == 30
 
 

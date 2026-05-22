@@ -16,9 +16,7 @@ class IncomeStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-
     """Persistent row backing the `income_statement` Kafka topic."""
 
     __tablename__ = "t_income_statement"
-    __table_args__ = (
-        UniqueConstraint("composite_key", name="uq_income_statement_composite_key"),
-    )
+    __table_args__ = (UniqueConstraint("composite_key", name="uq_income_statement_composite_key"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     composite_key: str = Field(index=True)

@@ -16,9 +16,7 @@ class CashFlowStatementDB(AuditMixin, SQLModel, table=True):  # type: ignore[cal
     """Persistent row backing the `cash_flow_statement` Kafka topic."""
 
     __tablename__ = "t_cash_flow_statement"
-    __table_args__ = (
-        UniqueConstraint("composite_key", name="uq_cash_flow_statement_composite_key"),
-    )
+    __table_args__ = (UniqueConstraint("composite_key", name="uq_cash_flow_statement_composite_key"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     composite_key: str = Field(index=True)

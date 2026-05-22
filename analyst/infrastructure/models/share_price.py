@@ -15,11 +15,7 @@ class SharePriceDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,m
     """Persistent row backing the `share_price` Kafka topic."""
 
     __tablename__ = "t_share_price"
-    __table_args__ = (
-        UniqueConstraint(
-            "ticker", "market", "trade_date", name="uq_share_price_composite"
-        ),
-    )
+    __table_args__ = (UniqueConstraint("ticker", "market", "trade_date", name="uq_share_price_composite"),)
 
     # Note: t_share_price is a partitioned table in Postgres, and we don't use
     # an autoincrement ID since the primary key is composite. We map the columns
@@ -27,18 +23,18 @@ class SharePriceDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,m
     ticker: str = Field(primary_key=True)
     market: str = Field(primary_key=True)
     trade_date: date = Field(primary_key=True)
-    
+
     sim_fin_id: Optional[int] = None
     currency: Optional[str] = None
-    
+
     open: Optional[float] = None
     high: Optional[float] = None
     low: Optional[float] = None
     close: Optional[float] = None
     adj_close: Optional[float] = None
-    
+
     volume: Optional[int] = Field(default=None, sa_column=Column(BigInteger()))
     shares_outstanding: Optional[int] = Field(default=None, sa_column=Column(BigInteger()))
     dividend: Optional[float] = None
-    
+
     extracted_at: datetime

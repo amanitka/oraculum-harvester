@@ -73,7 +73,7 @@ class BalanceSheet(BaseModel):
         try:
             if pd.isna(v):
                 return None
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             pass
         return v
 
@@ -106,7 +106,4 @@ class BalanceSheet(BaseModel):
         ``variant`` so rows for the same ticker/period across schemas and
         periodicities never collide.
         """
-        return (
-            f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}-"
-            f"{self.variant}"
-        )
+        return f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}-{self.variant}"

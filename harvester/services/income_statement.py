@@ -57,9 +57,7 @@ class IncomeStatementService:
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(
-                event, key=f"income_statement:{run_id}"
-            )
+            await publishers.data_file_ready.publish(event, key=f"income_statement:{run_id}")
 
             logger.info(
                 "Published %d rows for template '%s' to Parquet [cid=%s]",

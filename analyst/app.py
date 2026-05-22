@@ -71,8 +71,7 @@ def _install_access_log_sampling() -> None:
 
     for target_logger in target_loggers:
         has_sampling_filter = any(
-            isinstance(existing_filter, _AccessLogSamplingFilter)
-            for existing_filter in target_logger.filters
+            isinstance(existing_filter, _AccessLogSamplingFilter) for existing_filter in target_logger.filters
         )
         if has_sampling_filter:
             continue

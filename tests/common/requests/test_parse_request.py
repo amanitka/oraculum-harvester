@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from pydantic import TypeAdapter
 from common.requests import AnyRequest
+
 parse_request = TypeAdapter(AnyRequest).validate_python
 
 

@@ -57,9 +57,7 @@ class BalanceSheetService:
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(
-                event, key=f"balance_sheet:{run_id}"
-            )
+            await publishers.data_file_ready.publish(event, key=f"balance_sheet:{run_id}")
 
             logger.info(
                 "Published %d rows for template '%s' to Parquet [cid=%s]",

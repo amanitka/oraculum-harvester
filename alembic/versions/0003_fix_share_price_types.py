@@ -20,11 +20,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # Use BigInteger for volume and shares_outstanding as they can exceed 2.1B (Postgres INT max)
-    op.alter_column('t_share_price', 'volume', type_=sa.BigInteger())
-    op.alter_column('t_share_price', 'shares_outstanding', type_=sa.BigInteger())
+    op.alter_column("t_share_price", "volume", type_=sa.BigInteger())
+    op.alter_column("t_share_price", "shares_outstanding", type_=sa.BigInteger())
 
 
 def downgrade() -> None:
     # Technically dropping down could result in data loss if values > 2B
-    op.alter_column('t_share_price', 'volume', type_=sa.Integer())
-    op.alter_column('t_share_price', 'shares_outstanding', type_=sa.Integer())
+    op.alter_column("t_share_price", "volume", type_=sa.Integer())
+    op.alter_column("t_share_price", "shares_outstanding", type_=sa.Integer())

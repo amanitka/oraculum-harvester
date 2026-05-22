@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
     group_id=config.analyst_consumer_group,
     auto_offset_reset="earliest",
 )
-async def handle_analyze_ticker_request(request: AnalyzeTickerRequest, session: AsyncSession = DependsSession()) -> None:
+async def handle_analyze_ticker_request(
+    request: AnalyzeTickerRequest, session: AsyncSession = DependsSession()
+) -> None:
     """
     Handles an incoming request to analyze a ticker.
 
@@ -58,7 +60,7 @@ async def handle_analyze_ticker_request(request: AnalyzeTickerRequest, session: 
 
         # Now, for the async workflow, we use the async session
         llm_client = OpenAiClient()
-        tools = AgentContextFactory(session).create_tools() # Pass the async session
+        tools = AgentContextFactory(session).create_tools()  # Pass the async session
         workflow = AnalysisWorkflow(llm_client, tools)
         result = await workflow.run(request, correlation_id)
 
@@ -84,9 +86,10 @@ async def handle_analyze_ticker_request(request: AnalyzeTickerRequest, session: 
             f"Analysis failed for {request.ticker}: {e}",
             extra={"cid": correlation_id, "ticker": request.ticker},
         )
+
         def _fail(sync_session):
-             repo = AnalysisRepository(sync_session)
-             repo.mark_failed(correlation_id, str(e))
-             sync_session.commit()
-             
+            repo = AnalysisRepository(sync_session)
+            repo.mark_failed(correlation_id, str(e))
+            sync_session.commit()
+
         await session.run_sync(_fail)

@@ -173,15 +173,15 @@ class SimFinProvider:
             return None
         try:
             return int(float(value))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def fetch_share_prices(
-            self,
-            market: str,
-            variant: str,
-            from_date: Optional[date],
-            safety_window_days: int,
+        self,
+        market: str,
+        variant: str,
+        from_date: Optional[date],
+        safety_window_days: int,
     ) -> Iterator[List[SharePrice]]:
         """Yield lists of validated ``SharePrice`` records for the given market and date range in chunks."""
         logger.info(
@@ -190,7 +190,7 @@ class SimFinProvider:
             market,
             from_date,
         )
-        
+
         # SimFin's load() does not support chunksize, so we load the DataFrame first.
         # The memory spike usually comes from millions of Python Pydantic objects,
         # not the raw Pandas DataFrame. We'll chunk the output yielding instead.
@@ -203,7 +203,7 @@ class SimFinProvider:
             df = df[date_series >= cutoff]
 
         extracted_at = datetime.now(timezone.utc)
-        
+
         total_published = 0
         total_skipped_missing = 0
         total_skipped_invalid = 0
@@ -222,7 +222,7 @@ class SimFinProvider:
                 total_published += 1
             else:
                 total_skipped_invalid += 1
-            
+
             # Yield when chunk reaches target size
             if len(chunk_results) >= chunk_size:
                 yield chunk_results
@@ -257,9 +257,9 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_share_price(
-            row: pd.Series,
-            market: str,
-            extracted_at: datetime,
+        row: pd.Series,
+        market: str,
+        extracted_at: datetime,
     ) -> Optional[SharePrice]:
         symbol = row.get("Ticker", "Unknown")
         try:
@@ -272,10 +272,10 @@ class SimFinProvider:
             return None
 
     def fetch_income(
-            self,
-            template: IncomeStatementTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: IncomeStatementTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[IncomeStatement]:
         """Yield validated `IncomeStatement` rows for one SimFin industry template."""
         income_data = self._load_income(template, variant, market)
@@ -304,9 +304,7 @@ class SimFinProvider:
         )
 
     @staticmethod
-    def _load_income(
-            template: IncomeStatementTemplate, variant: str, market: str
-    ) -> pd.DataFrame:
+    def _load_income(template: IncomeStatementTemplate, variant: str, market: str) -> pd.DataFrame:
         loader = _INCOME_LOADERS[template]
         logger.info(
             "Loading income template=%s variant=%s market=%s",
@@ -319,10 +317,10 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_income(
-            row: pd.Series,
-            template: IncomeStatementTemplate,
-            variant: str,
-            extracted_at: datetime,
+        row: pd.Series,
+        template: IncomeStatementTemplate,
+        variant: str,
+        extracted_at: datetime,
     ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:
@@ -334,16 +332,14 @@ class SimFinProvider:
             model_input["payload"] = payload
             return IncomeStatement.model_validate(model_input)
         except (ValidationError, TypeError) as exc:
-            logger.warning(
-                "Skipping income row template=%s ticker=%s: %s", template, symbol, exc
-            )
+            logger.warning("Skipping income row template=%s ticker=%s: %s", template, symbol, exc)
             return None
 
     def fetch_balance_sheet(
-            self,
-            template: BalanceSheetTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: BalanceSheetTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[BalanceSheet]:
         """Yield validated `BalanceSheet` rows for one SimFin industry template."""
         balance_data = self._load_balance_sheet(template, variant, market)
@@ -377,9 +373,7 @@ class SimFinProvider:
         )
 
     @staticmethod
-    def _load_balance_sheet(
-            template: BalanceSheetTemplate, variant: str, market: str
-    ) -> pd.DataFrame:
+    def _load_balance_sheet(template: BalanceSheetTemplate, variant: str, market: str) -> pd.DataFrame:
         loader = _BALANCE_SHEET_LOADERS[template]
         logger.info(
             "Loading balance sheet template=%s variant=%s market=%s",
@@ -392,10 +386,10 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_balance_sheet(
-            row: pd.Series,
-            template: BalanceSheetTemplate,
-            variant: str,
-            extracted_at: datetime,
+        row: pd.Series,
+        template: BalanceSheetTemplate,
+        variant: str,
+        extracted_at: datetime,
     ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
         try:
@@ -416,10 +410,10 @@ class SimFinProvider:
             return None
 
     def fetch_cash_flow_statement(
-            self,
-            template: CashFlowStatementTemplate,
-            variant: str,
-            market: str,
+        self,
+        template: CashFlowStatementTemplate,
+        variant: str,
+        market: str,
     ) -> Iterator[CashFlowStatement]:
         """Yield validated `CashFlowStatement` rows for one SimFin industry template."""
         cash_flow_data = self._load_cash_flow_statement(template, variant, market)
@@ -453,9 +447,7 @@ class SimFinProvider:
         )
 
     @staticmethod
-    def _load_cash_flow_statement(
-            template: CashFlowStatementTemplate, variant: str, market: str
-    ) -> pd.DataFrame:
+    def _load_cash_flow_statement(template: CashFlowStatementTemplate, variant: str, market: str) -> pd.DataFrame:
         loader = _CASH_FLOW_LOADERS[template]
         logger.info(
             "Loading cash flow statement template=%s variant=%s market=%s",
@@ -468,10 +460,10 @@ class SimFinProvider:
 
     @staticmethod
     def _data_row_to_cash_flow_statement(
-            row: pd.Series,
-            template: CashFlowStatementTemplate,
-            variant: str,
-            extracted_at: datetime,
+        row: pd.Series,
+        template: CashFlowStatementTemplate,
+        variant: str,
+        extracted_at: datetime,
     ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
         try:

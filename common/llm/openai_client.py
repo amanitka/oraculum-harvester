@@ -3,10 +3,10 @@ import logging
 import time
 from typing import Any, Mapping
 
-from openai import AsyncOpenAI
 from openai import APIConnectionError as OpenAIApiConnectionError
-from openai import RateLimitError as OpenAIRateLimitError
+from openai import AsyncOpenAI
 from openai import InternalServerError
+from openai import RateLimitError as OpenAIRateLimitError
 from pydantic import BaseModel, ValidationError
 
 from common.config import config
@@ -15,6 +15,7 @@ from common.llm.base import LlmClient, LlmResponse
 logger = logging.getLogger(__name__)
 _INCOMPLETE_ERROR_TEXT = "incomplete structured response"
 _MAX_RETRY_TOKENS = config.llm.max_tokens
+
 
 class StructuredOutputError(ValueError):
     """Raised when structured model output cannot be parsed reliably."""
@@ -63,7 +64,7 @@ class OpenAiClient(LlmClient):
                 # Google AI Studio OpenAI endpoint expects basic json_object if structured is needed
                 kwargs: dict[str, Any] = {
                     "model": model,
-                    "messages": messages, # type: ignore
+                    "messages": messages,  # type: ignore
                     "max_tokens": current_max_tokens,
                     "temperature": temperature,
                 }
@@ -72,7 +73,7 @@ class OpenAiClient(LlmClient):
                     kwargs["response_format"] = {"type": "json_object"}
 
                 response = await self._client.chat.completions.create(**kwargs)
-                
+
                 end_time = time.monotonic()
 
                 choice = response.choices[0]
@@ -103,7 +104,11 @@ class OpenAiClient(LlmClient):
                     finish_reason=finish_reason,
                 )
 
-            except (OpenAIRateLimitError, InternalServerError, OpenAIApiConnectionError) as e:
+            except (
+                OpenAIRateLimitError,
+                InternalServerError,
+                OpenAIApiConnectionError,
+            ) as e:
                 attempt += 1
                 logger.warning(
                     "LLM call failed with transient error (%s). Retrying in %.2fs... (%d/%d)",
@@ -133,7 +138,10 @@ class OpenAiClient(LlmClient):
                     raise
 
                 if _INCOMPLETE_ERROR_TEXT in str(e).lower() and current_max_tokens < _MAX_RETRY_TOKENS:
-                    next_max_tokens = min(max(current_max_tokens * 2, current_max_tokens + 1), _MAX_RETRY_TOKENS)
+                    next_max_tokens = min(
+                        max(current_max_tokens * 2, current_max_tokens + 1),
+                        _MAX_RETRY_TOKENS,
+                    )
                     logger.warning(
                         "Increasing max_tokens for retry from %d to %d after truncation.",
                         current_max_tokens,

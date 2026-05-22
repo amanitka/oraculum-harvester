@@ -14,6 +14,7 @@ class AgentContext:
     """
     State and dependencies provided to every agent during an analysis run.
     """
+
     ticker: str
     market: str
     as_of: date

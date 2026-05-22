@@ -8,7 +8,9 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from analyst.application.agents.tools import DataTools
 from analyst.infrastructure.models.industry import IndustryDB
 from analyst.infrastructure.repositories.balance_sheet import BalanceSheetRepository
-from analyst.infrastructure.repositories.cash_flow_statement import CashFlowStatementRepository
+from analyst.infrastructure.repositories.cash_flow_statement import (
+    CashFlowStatementRepository,
+)
 from analyst.infrastructure.repositories.daily_market_signals import (
     DailyMarketSignalsQuery,
     DailyMarketSignalsRepository,
@@ -17,7 +19,9 @@ from analyst.infrastructure.repositories.derived_metrics import (
     DerivedMetricsRepository,
     DerivedMetricsQuery,
 )
-from analyst.infrastructure.repositories.income_statement import IncomeStatementRepository
+from analyst.infrastructure.repositories.income_statement import (
+    IncomeStatementRepository,
+)
 from analyst.infrastructure.repositories.share_price import SharePriceRepository
 from analyst.infrastructure.repositories.ticker import TickerRepository
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
@@ -111,7 +115,7 @@ class AgentDataTools(DataTools):
 
         try:
             industry_id = int(profile["industry_id"])
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             logger.info(
                 "AgentDataTools.resolve_template fetched %d rows for ticker=%s resolved_template=%s",
                 row_count,
@@ -153,8 +157,7 @@ class AgentDataTools(DataTools):
         title = f"Income Statement History for {ticker} ({variant.upper()})"
         markdown = self._to_markdown(history, title=title)
         logger.info(
-            "AgentDataTools.get_income_statement_history fetched %d rows for "
-            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            "AgentDataTools.get_income_statement_history fetched %d rows for ticker=%s template=%s variant=%s markdown_chars=%d",
             len(history),
             ticker,
             template,
@@ -177,8 +180,7 @@ class AgentDataTools(DataTools):
         title = f"Balance Sheet History for {ticker} ({variant.upper()})"
         markdown = self._to_markdown(history, title=title)
         logger.info(
-            "AgentDataTools.get_balance_sheet_history fetched %d rows for "
-            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            "AgentDataTools.get_balance_sheet_history fetched %d rows for ticker=%s template=%s variant=%s markdown_chars=%d",
             len(history),
             ticker,
             template,
@@ -201,8 +203,7 @@ class AgentDataTools(DataTools):
         title = f"Cash Flow History for {ticker} ({variant.upper()})"
         markdown = self._to_markdown(history, title=title)
         logger.info(
-            "AgentDataTools.get_cash_flow_history fetched %d rows for "
-            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            "AgentDataTools.get_cash_flow_history fetched %d rows for ticker=%s template=%s variant=%s markdown_chars=%d",
             len(history),
             ticker,
             template,
@@ -212,14 +213,11 @@ class AgentDataTools(DataTools):
         return markdown
 
     async def get_price_window(self, ticker: str, start: date, end: date) -> str:
-        prices = await self._share_price_repo.fetch_prices(
-            ticker=ticker, start_date=start, end_date=end
-        )
+        prices = await self._share_price_repo.fetch_prices(ticker=ticker, start_date=start, end_date=end)
         title = f"Share Prices for {ticker} from {start} to {end}"
         markdown = self._to_markdown(prices, title=title)
         logger.info(
-            "AgentDataTools.get_price_window fetched %d rows for "
-            "ticker=%s start=%s end=%s markdown_chars=%d",
+            "AgentDataTools.get_price_window fetched %d rows for ticker=%s start=%s end=%s markdown_chars=%d",
             len(prices),
             ticker,
             start,
@@ -263,8 +261,7 @@ class AgentDataTools(DataTools):
         }
         payload = json.dumps(data, default=_serialize_date)
         logger.info(
-            "AgentDataTools.get_share_price_signals fetched daily_rows=%d monthly_rows=%d "
-            "for ticker=%s market=%s as_of=%s json_chars=%d",
+            "AgentDataTools.get_share_price_signals fetched daily_rows=%d monthly_rows=%d for ticker=%s market=%s as_of=%s json_chars=%d",
             len(daily_results),
             len(monthly_results),
             ticker,
@@ -282,15 +279,12 @@ class AgentDataTools(DataTools):
         variant: StatementVariant,
         limit: int = 100,
     ) -> str:
-        query = DerivedMetricsQuery(
-            ticker=ticker, template=template, variant=variant, limit=limit
-        )
+        query = DerivedMetricsQuery(ticker=ticker, template=template, variant=variant, limit=limit)
         metrics = await self._derived_metrics_repo.fetch(query)
         title = f"Derived Metrics for {ticker} ({template.upper()}/{variant.upper()})"
         markdown = self._to_markdown(metrics, title=title)
         logger.info(
-            "AgentDataTools.get_derived_metrics fetched %d rows for "
-            "ticker=%s template=%s variant=%s markdown_chars=%d",
+            "AgentDataTools.get_derived_metrics fetched %d rows for ticker=%s template=%s variant=%s markdown_chars=%d",
             len(metrics),
             ticker,
             template,

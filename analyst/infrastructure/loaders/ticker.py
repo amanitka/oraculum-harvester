@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 class TickerStrategy(ParquetMergeStrategy):
     """Handles bulk loading and upserting into the t_ticker table."""
 
-    async def merge(
-        self, session: AsyncSession, stg_table: str, records: list[dict[str, Any]]
-    ) -> None:
+    async def merge(self, session: AsyncSession, stg_table: str, records: list[dict[str, Any]]) -> None:
         """
         Merge records from a Parquet file into the target table.
 

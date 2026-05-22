@@ -41,9 +41,7 @@ class PartitionManager:
     """Ensures monthly ``RANGE`` partitions of ``t_share_price`` exist."""
 
     @classmethod
-    async def ensure_share_price_partitions(
-        cls, session: AsyncSession, months_ahead: int = 9
-    ) -> None:
+    async def ensure_share_price_partitions(cls, session: AsyncSession, months_ahead: int = 9) -> None:
         """Create any missing monthly partitions.
 
         Covers ``_HISTORICAL_START`` through the current month plus
@@ -63,11 +61,7 @@ class PartitionManager:
                 created += 1
             current = _next_month(current)
 
-        total_months = (
-            (end.year - _HISTORICAL_START.year) * 12
-            + end.month
-            - _HISTORICAL_START.month
-        )
+        total_months = (end.year - _HISTORICAL_START.year) * 12 + end.month - _HISTORICAL_START.month
         logger.info(
             "Share price partition check complete: created=%d total_range_months=%d",
             created,
@@ -78,18 +72,12 @@ class PartitionManager:
     async def _existing_partition_names(session: AsyncSession) -> set[str]:
         """Return names of existing t_share_price_* partitions."""
         result = await session.execute(
-            text(
-                "SELECT tablename FROM pg_tables"
-                " WHERE schemaname = 'public'"
-                " AND tablename LIKE 't_share_price_%'"
-            )
+            text("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 't_share_price_%'")
         )
         return {row[0] for row in result}
 
     @staticmethod
-    async def _create_partition(
-        session: AsyncSession, name: str, month_start: date
-    ) -> None:
+    async def _create_partition(session: AsyncSession, name: str, month_start: date) -> None:
         """Issue a ``CREATE TABLE IF NOT EXISTS ... PARTITION OF`` statement."""
         month_end = _next_month(month_start)
         await session.exec(

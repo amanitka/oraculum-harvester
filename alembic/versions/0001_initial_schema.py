@@ -1,7 +1,7 @@
 """Initial schema
 
 Revision ID: 0001_initial
-Revises: 
+Revises:
 Create Date: 2026-05-01 00:00:00.000000
 
 """
@@ -36,9 +36,7 @@ def upgrade() -> None:
         sa.Column("error_text", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint(
-            "dataset", "run_id", "file_checksum", name="uq_run_log_idempotency"
-        ),
+        sa.UniqueConstraint("dataset", "run_id", "file_checksum", name="uq_run_log_idempotency"),
     )
     op.create_index(
         op.f("ix_t_ingestion_run_log_dataset"),
@@ -100,9 +98,19 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("composite_key", name="uq_balance_sheet_composite_key"),
     )
-    op.create_index(op.f("ix_t_balance_sheet_composite_key"), "t_balance_sheet", ["composite_key"], unique=False)
+    op.create_index(
+        op.f("ix_t_balance_sheet_composite_key"),
+        "t_balance_sheet",
+        ["composite_key"],
+        unique=False,
+    )
     op.create_index(op.f("ix_t_balance_sheet_ticker"), "t_balance_sheet", ["ticker"], unique=False)
-    op.create_index(op.f("ix_t_balance_sheet_simfin_id"), "t_balance_sheet", ["simfin_id"], unique=False)
+    op.create_index(
+        op.f("ix_t_balance_sheet_simfin_id"),
+        "t_balance_sheet",
+        ["simfin_id"],
+        unique=False,
+    )
     op.create_index(op.f("ix_t_balance_sheet_variant"), "t_balance_sheet", ["variant"], unique=False)
 
     # 4. t_cash_flow_statement
@@ -127,10 +135,30 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("composite_key", name="uq_cash_flow_statement_composite_key"),
     )
-    op.create_index(op.f("ix_t_cash_flow_statement_composite_key"), "t_cash_flow_statement", ["composite_key"], unique=False)
-    op.create_index(op.f("ix_t_cash_flow_statement_ticker"), "t_cash_flow_statement", ["ticker"], unique=False)
-    op.create_index(op.f("ix_t_cash_flow_statement_simfin_id"), "t_cash_flow_statement", ["simfin_id"], unique=False)
-    op.create_index(op.f("ix_t_cash_flow_statement_variant"), "t_cash_flow_statement", ["variant"], unique=False)
+    op.create_index(
+        op.f("ix_t_cash_flow_statement_composite_key"),
+        "t_cash_flow_statement",
+        ["composite_key"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_cash_flow_statement_ticker"),
+        "t_cash_flow_statement",
+        ["ticker"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_cash_flow_statement_simfin_id"),
+        "t_cash_flow_statement",
+        ["simfin_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_cash_flow_statement_variant"),
+        "t_cash_flow_statement",
+        ["variant"],
+        unique=False,
+    )
 
     # 5. t_income_statement
     op.create_table(
@@ -154,10 +182,30 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("composite_key", name="uq_income_statement_composite_key"),
     )
-    op.create_index(op.f("ix_t_income_statement_composite_key"), "t_income_statement", ["composite_key"], unique=False)
-    op.create_index(op.f("ix_t_income_statement_ticker"), "t_income_statement", ["ticker"], unique=False)
-    op.create_index(op.f("ix_t_income_statement_simfin_id"), "t_income_statement", ["simfin_id"], unique=False)
-    op.create_index(op.f("ix_t_income_statement_variant"), "t_income_statement", ["variant"], unique=False)
+    op.create_index(
+        op.f("ix_t_income_statement_composite_key"),
+        "t_income_statement",
+        ["composite_key"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_income_statement_ticker"),
+        "t_income_statement",
+        ["ticker"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_income_statement_simfin_id"),
+        "t_income_statement",
+        ["simfin_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_t_income_statement_variant"),
+        "t_income_statement",
+        ["variant"],
+        unique=False,
+    )
 
     # 6. t_share_price (partitioned)
     op.create_table(
@@ -180,16 +228,21 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint("ticker", "market", "trade_date"),
         sa.UniqueConstraint("ticker", "market", "trade_date", name="uq_share_price_composite"),
-        postgresql_partition_by="RANGE (trade_date)"
+        postgresql_partition_by="RANGE (trade_date)",
     )
-    op.create_index(op.f("ix_share_price_market_trade_date"), "t_share_price", ["market", "trade_date"], unique=False)
+    op.create_index(
+        op.f("ix_share_price_market_trade_date"),
+        "t_share_price",
+        ["market", "trade_date"],
+        unique=False,
+    )
     op.create_index(op.f("ix_share_price_ticker"), "t_share_price", ["ticker"], unique=False)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.execute(sa.text("DROP TABLE IF EXISTS t_share_price CASCADE"))
-    
+
     op.drop_table("t_income_statement")
     op.drop_table("t_cash_flow_statement")
     op.drop_table("t_balance_sheet")

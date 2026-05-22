@@ -9,7 +9,11 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from analyst.infrastructure.models.income_statement import IncomeStatementDB
-from common.domain.income_statement import IncomeStatement, StatementVariant, IncomeStatementTemplate
+from common.domain.income_statement import (
+    IncomeStatement,
+    StatementVariant,
+    IncomeStatementTemplate,
+)
 
 
 class IncomeStatementRepository:

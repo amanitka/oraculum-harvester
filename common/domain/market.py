@@ -6,9 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class Market(BaseModel):
     """Domain model representing a financial market from SimFin."""
-    
+
     model_config = ConfigDict(populate_by_name=True)
-    
+
     market_id: str = Field(..., alias="MarketId")
     market_name: str = Field(..., alias="Market Name")
     currency: Optional[str] = Field(None, alias="Currency")

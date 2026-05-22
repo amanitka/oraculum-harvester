@@ -44,16 +44,11 @@ def _build_cash_flow_history() -> str:
     rows = [
         "| fiscal_year | payload |",
         "| --- | --- |",
-        "| 2021 | {'fiscal_year': 2021, 'net_cash_from_operating_activities': 3400, "
-        "'free_cash_flow': 301, 'capital_expenditure': 301} |",
-        "| 2022 | {'fiscal_year': 2022, 'net_cash_from_operating_activities': 3565, "
-        "'free_cash_flow': 450, 'capital_expenditure': 450} |",
-        "| 2023 | {'fiscal_year': 2023, 'net_cash_from_operating_activities': 3100, "
-        "'free_cash_flow': 546, 'capital_expenditure': 546} |",
-        "| 2024 | {'fiscal_year': 2024, 'net_cash_from_operating_activities': 3200, "
-        "'free_cash_flow': 636, 'capital_expenditure': 636} |",
-        "| 2025 | {'fiscal_year': 2025, 'net_cash_from_operating_activities': 3300, "
-        "'free_cash_flow': 1012, 'capital_expenditure': 1012} |",
+        "| 2021 | {'fiscal_year': 2021, 'net_cash_from_operating_activities': 3400, 'free_cash_flow': 301, 'capital_expenditure': 301} |",
+        "| 2022 | {'fiscal_year': 2022, 'net_cash_from_operating_activities': 3565, 'free_cash_flow': 450, 'capital_expenditure': 450} |",
+        "| 2023 | {'fiscal_year': 2023, 'net_cash_from_operating_activities': 3100, 'free_cash_flow': 546, 'capital_expenditure': 546} |",
+        "| 2024 | {'fiscal_year': 2024, 'net_cash_from_operating_activities': 3200, 'free_cash_flow': 636, 'capital_expenditure': 636} |",
+        "| 2025 | {'fiscal_year': 2025, 'net_cash_from_operating_activities': 3300, 'free_cash_flow': 1012, 'capital_expenditure': 1012} |",
     ]
     return "\n".join(rows)
 

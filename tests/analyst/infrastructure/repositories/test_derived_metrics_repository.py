@@ -83,9 +83,7 @@ def test_derived_metrics_model_maps_read_only_view() -> None:
     """Ensure derived metrics use an ORM model mapped to the SQL view."""
     assert DerivedMetricsDB.__tablename__ == "v_derived_metrics"
     assert DerivedMetricsDB.__table__.info["is_view"] is True
-    assert [column.name for column in DerivedMetricsDB.__table__.primary_key] == [
-        "composite_key"
-    ]
+    assert [column.name for column in DerivedMetricsDB.__table__.primary_key] == ["composite_key"]
 
 
 def _derived_metrics_row() -> DerivedMetricsDB:

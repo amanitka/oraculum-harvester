@@ -28,11 +28,23 @@ class AnalysisDB(SQLModel, table=True):
     status: str = Field(description="The current status of the analysis (pending, running, completed, failed).")
 
     # Result payload, populated on completion
-    report_md: str | None = Field(default=None, sa_column=Column(Text), description="The final analysis report in Markdown format.")
+    report_md: str | None = Field(
+        default=None,
+        sa_column=Column(Text),
+        description="The final analysis report in Markdown format.",
+    )
     verdict: str | None = Field(default=None, description="The final investment verdict (bull, bear, neutral).")
     conviction: int | None = Field(default=None, description="Conviction level of the verdict (1-5).")
-    payload: dict[str, Any] | None = Field(default=None, sa_column=Column(JSONB), description="Full structured result including per-agent traces.")
-    error: str | None = Field(default=None, sa_column=Column(Text), description="Error message if the analysis failed.")
+    payload: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSONB),
+        description="Full structured result including per-agent traces.",
+    )
+    error: str | None = Field(
+        default=None,
+        sa_column=Column(Text),
+        description="Error message if the analysis failed.",
+    )
 
     # Timestamps
     created_at: datetime = Field(description="Timestamp (UTC) when the analysis was requested.")

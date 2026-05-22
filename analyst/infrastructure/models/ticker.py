@@ -10,13 +10,12 @@ from sqlmodel import Field, SQLModel, UniqueConstraint
 from analyst.infrastructure.models.base import AuditMixin
 from sqlalchemy import BigInteger, Column
 
+
 class TickerDB(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     """Persistent row backing the `ticker` Kafka topic."""
 
     __tablename__ = "t_ticker"
-    __table_args__ = (
-        UniqueConstraint("ticker", "market", name="uq_ticker_ticker_market"),
-    )
+    __table_args__ = (UniqueConstraint("ticker", "market", name="uq_ticker_ticker_market"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     ticker: str = Field(index=True)

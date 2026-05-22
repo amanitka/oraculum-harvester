@@ -28,7 +28,7 @@ class IndustryProvider:
         # Added refresh_days parameter from config
         df = sf.load_industries(refresh_days=config.simfin_refresh_days).reset_index()
         extracted_at = datetime.now(timezone.utc)
-        
+
         published = 0
         skipped = 0
 
@@ -39,7 +39,7 @@ class IndustryProvider:
                 yield industry
             else:
                 skipped += 1
-                
+
         logger.info(f"Industry load summary: published={published} skipped={skipped}")
 
     @staticmethod

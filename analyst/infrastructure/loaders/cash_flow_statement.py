@@ -14,9 +14,7 @@ from analyst.infrastructure.loaders.base import ParquetMergeStrategy
 class CashFlowStatementStrategy(ParquetMergeStrategy):
     """Handles bulk loading and upserting into the t_cash_flow_statement table."""
 
-    async def merge(
-        self, session: AsyncSession, stg_table: str, records: list[dict[str, Any]]
-    ) -> None:
+    async def merge(self, session: AsyncSession, stg_table: str, records: list[dict[str, Any]]) -> None:
         await session.exec(
             text(f"""
             CREATE TEMP TABLE {stg_table} (LIKE t_cash_flow_statement INCLUDING DEFAULTS) ON COMMIT DROP;

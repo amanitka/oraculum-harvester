@@ -67,7 +67,5 @@ class DerivedMetricsRepository:
             DerivedMetricsDB.fiscal_period.desc(),
             DerivedMetricsDB.report_date.desc(),
         )
-        result = await self._session.exec(
-            statement.limit(query.limit).offset(query.offset)
-        )
+        result = await self._session.exec(statement.limit(query.limit).offset(query.offset))
         return list(result.all())
