@@ -50,9 +50,9 @@ class CriticAgent(Agent[CriticOutput]):
 
         response = await ctx.llm.complete(
             messages=messages,
-            model="gemini-2.5-pro",
-            max_tokens=config.llm.max_tokens,
-            temperature=0.1,
+            model="pro-tier",
+            max_tokens=config.llm.router_settings.max_tokens,
+            temperature=config.llm.router_settings.temperature,
             response_format=self.output_model,
         )
 

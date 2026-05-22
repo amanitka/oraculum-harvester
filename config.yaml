@@ -37,10 +37,48 @@ analyst:
     dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3
 
 llm:
-  provider: openai
-  model: $ORACULUM_LLM_MODEL|gemini-2.5-flash
-  api_key: $ORACULUM_LLM_API_KEY # Use a simple API key
-  api_base: https://generativelanguage.googleapis.com/v1beta/
-  maxTokens: $ORACULUM_LLM_MAX_TOKENS|16384
-  temperature: $ORACULUM_LLM_TEMPERATURE|0.2
-  workflowTokenBudget: $ORACULUM_LLM_WORKFLOW_TOKEN_BUDGET|100000
+  # A list of all available model deployments.
+  # 'alias' groups them into tiers. 'order' defines failover priority within a tier.
+  deployments:
+    # --- Tier 1: Flash Models (for simple, high-volume tasks) ---
+    - alias: "flash-tier"
+      model: "gemini/gemini-1.5-flash-latest"
+      api_key: $GEMINI_API_KEY
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
+      order: 1 # Primary: Google's cheap and fast model.
+    - alias: "flash-tier"
+      model: "llama3-8b-8192"
+      api_key: $GROQ_API_KEY
+      api_base: "https://api.groq.com/openai/v1"
+      order: 2 # Fallback: Fast and cheap Groq model.
+
+    # --- Tier 2: Pro Models (for robust analysis) ---
+    - alias: "pro-tier"
+      model: "gemini/gemini-1.5-pro-latest"
+      api_key: $GEMINI_API_KEY
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
+      order: 1 # Primary: Google's flagship model.
+    - alias: "pro-tier"
+      model: "llama3-70b-8192"
+      api_key: $GROQ_API_KEY
+      api_base: "https://api.groq.com/openai/v1"
+      order: 2 # Fallback: Powerful 70B model.
+
+    # --- Tier 3: Specialist Models (for critical synthesis) ---
+    - alias: "specialist-tier"
+      model: "gemini/gemini-1.5-pro-latest"
+      api_key: $GEMINI_API_KEY
+      api_base: "https://generativelanguage.googleapis.com/v1beta/"
+      order: 1 # Primary: Flagship model for the most complex tasks.
+    - alias: "specialist-tier"
+      model: "llama3-70b-8192"
+      api_key: $GROQ_API_KEY
+      api_base: "https://api.groq.com/openai/v1"
+      order: 2 # Fallback: Cross-provider failover to a powerful Groq model.
+
+  # Global settings applied to all calls via the router
+  router_settings:
+    temperature: 0.0
+    num_retries: 3
+    workflow_token_budget: 100000
+    max_tokens: 8192

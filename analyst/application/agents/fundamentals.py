@@ -46,9 +46,9 @@ class FundamentalsAgent(Agent[FundamentalsOutput]):
 
         response = await ctx.llm.complete(
             messages=messages,
-            model="gemini-2.5-flash-lite",
-            max_tokens=config.llm.max_tokens,
-            temperature=0.2,
+            model="flash-tier",
+            max_tokens=config.llm.router_settings.max_tokens,
+            temperature=config.llm.router_settings.temperature,
             response_format=self.output_model,
         )
 

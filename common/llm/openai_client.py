@@ -14,7 +14,7 @@ from common.llm.base import LlmClient, LlmResponse
 
 logger = logging.getLogger(__name__)
 _INCOMPLETE_ERROR_TEXT = "incomplete structured response"
-_MAX_RETRY_TOKENS = config.llm.max_tokens
+_MAX_RETRY_TOKENS = config.llm.router_settings.max_tokens
 
 
 class StructuredOutputError(ValueError):
@@ -23,19 +23,60 @@ class StructuredOutputError(ValueError):
 
 class OpenAiClient(LlmClient):
     """
-    An adapter for the official OpenAI SDK that implements the LlmClient interface.
+    An adapter for the official OpenAI SDK that implements the LlmClient interface and tier-based routing.
     """
 
     def __init__(self, max_retries: int = 3, initial_backoff_s: float = 1.0):
         self._max_retries = max_retries
         self._initial_backoff_s = initial_backoff_s
-        self._client = AsyncOpenAI(
-            api_key=config.llm.api_key,
-            base_url=config.llm.api_base,
-        )
 
     async def complete(
         self,
+        messages: list[Mapping[str, Any]],
+        *,
+        model: str,  # This will now be the alias, e.g., "flash-tier"
+        max_tokens: int,
+        temperature: float,
+        response_format: type[BaseModel] | dict[str, Any] | None = None,
+    ) -> LlmResponse:
+        """
+        Generates a completion using the OpenAI SDK with tier-based routing and retry logic.
+        """
+        deployments = sorted(
+            [d for d in config.llm.deployments if d.alias == model],
+            key=lambda d: d.order,
+        )
+
+        if not deployments:
+            raise ValueError(f"No deployments found for alias '{model}'")
+
+        last_exception = None
+        for deployment in deployments:
+            client = AsyncOpenAI(api_key=deployment.api_key, base_url=deployment.api_base)
+            try:
+                return await self._try_complete_with_deployment(
+                    client,
+                    messages,
+                    model=deployment.model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    response_format=response_format,
+                )
+            except Exception as e:
+                logger.warning(
+                    "Deployment %s for tier %s failed. Trying next. Error: %s",
+                    deployment.model,
+                    model,
+                    e,
+                )
+                last_exception = e
+                continue
+
+        raise RuntimeError(f"All deployments for tier {model} failed.") from last_exception
+
+    async def _try_complete_with_deployment(
+        self,
+        client: AsyncOpenAI,
         messages: list[Mapping[str, Any]],
         *,
         model: str,
@@ -43,9 +84,6 @@ class OpenAiClient(LlmClient):
         temperature: float,
         response_format: type[BaseModel] | dict[str, Any] | None = None,
     ) -> LlmResponse:
-        """
-        Generates a completion using the OpenAI SDK with retry logic.
-        """
         attempt = 0
         backoff = self._initial_backoff_s
         current_max_tokens = min(max_tokens, _MAX_RETRY_TOKENS)
@@ -61,7 +99,6 @@ class OpenAiClient(LlmClient):
             try:
                 start_time = time.monotonic()
 
-                # Google AI Studio OpenAI endpoint expects basic json_object if structured is needed
                 kwargs: dict[str, Any] = {
                     "model": model,
                     "messages": messages,  # type: ignore
@@ -72,7 +109,7 @@ class OpenAiClient(LlmClient):
                 if response_format:
                     kwargs["response_format"] = {"type": "json_object"}
 
-                response = await self._client.chat.completions.create(**kwargs)
+                response = await client.chat.completions.create(**kwargs)
 
                 end_time = time.monotonic()
 
@@ -80,7 +117,6 @@ class OpenAiClient(LlmClient):
                 completion_text = choice.message.content or ""
                 finish_reason = getattr(choice, "finish_reason", None)
 
-                # Validate Pydantic model if requested
                 if isinstance(response_format, type) and issubclass(response_format, BaseModel):
                     try:
                         response_format.model_validate_json(completion_text)

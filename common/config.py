@@ -57,18 +57,37 @@ class _KafkaTopicsConfig:
         self.data_file_ready: str = source.get("kafka.topics.dataFileReady", "oraculum.data_file_ready")
 
 
+class _LlmDeploymentConfig:
+    """Settings for a specific LLM deployment."""
+
+    def __init__(self, data: dict) -> None:
+        self.alias: str = data.get("alias", "")
+        self.model: str = data.get("model", "")
+        self.api_key: str = data.get("api_key", "")
+        self.api_base: str = data.get("api_base", "")
+        self.order: int = data.get("order", 1)
+
+
+class _LlmRouterSettingsConfig:
+    """Global settings for the LLM router."""
+
+    def __init__(self, data: dict) -> None:
+        self.temperature: float = float(data.get("temperature", 0.0))
+        self.num_retries: int = int(data.get("num_retries", 3))
+        self.workflow_token_budget: int = int(data.get("workflow_token_budget", 100000))
+        self.max_tokens: int = int(data.get("max_tokens", 16384))
+
+
 class _LlmConfig:
     """Settings for the Large Language Model provider."""
 
     def __init__(self, source: EnvYAML) -> None:
-        self.provider: str = source.get("llm.provider", "openai")
-        self.model: str = source.get("llm.model", "gemini-1.5-flash-latest")
-        self.api_key: str = source.get("llm.api_key")
-        self.api_base: str = source.get("llm.api_base", "https://generativelanguage.googleapis.com/v1beta/")
-        self.max_tokens: int = self._positive_int(source.get("llm.maxTokens", 8192), "llm.maxTokens")
-        self.temperature: float = self._positive_float(source.get("llm.temperature", 0.2), "llm.temperature")
-        self.workflow_token_budget: int = self._positive_int(
-            source.get("llm.workflowTokenBudget", 100000), "llm.workflowTokenBudget"
+        deployments_data = source.get("llm.deployments", [])
+        self.deployments: List[_LlmDeploymentConfig] = [
+            _LlmDeploymentConfig(d) for d in deployments_data
+        ]
+        self.router_settings: _LlmRouterSettingsConfig = _LlmRouterSettingsConfig(
+            source.get("llm.router_settings", {})
         )
 
     @staticmethod

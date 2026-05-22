@@ -50,9 +50,9 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
 
         response = await ctx.llm.complete(
             messages=messages,
-            model="gemini-2.5-pro",
-            max_tokens=config.llm.max_tokens,
-            temperature=0.3,
+            model="specialist-tier",
+            max_tokens=config.llm.router_settings.max_tokens,
+            temperature=0.3, # Overriding deterministic default for synthesis
             response_format=self.output_model,
         )
 
