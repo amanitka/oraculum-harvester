@@ -125,6 +125,8 @@ class Config:
         self.simfin_api_key: str = source.get("simfin.apiKey")
         self.simfin_chunk_size: int = self._positive_int(source.get("simfin.chunkSize", 500000), "simfin.chunkSize")
         self.simfin_refresh_days: int = self._positive_int(source.get("simfin.refreshDays", 1), "simfin.refreshDays")
+        self.alpha_vantage_api_url: str = source.get("alphaVantage.apiUrl")
+        self.alpha_vantage_api_key: str = source.get("alphaVantage.apiKey")
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")

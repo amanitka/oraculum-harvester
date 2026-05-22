@@ -19,16 +19,17 @@ depends_on: Union[str, Sequence[str], None] = None
 _DAILY_MARKET_SIGNALS_VIEW_SQL = """
                                  CREATE
                                  OR REPLACE VIEW v_daily_market_signals AS
-WITH fundamental_timeline AS (-- Step 1: Isolate TTM data and build explicit point-in-time validity windows
-							  SELECT 
+WITH fundamental_timeline AS (SELECT 
 							     ticker,
 							     simfin_id,
 							     currency,
 							     fiscal_year,
 							     fiscal_period,
 							     publish_date AS valid_from,
-							     -- If it's the latest report, it remains valid indefinitely (into the future)
-							     LEAD(publish_date, 1, '9999-12-31'::date) OVER (PARTITION BY ticker ORDER BY publish_date ASC, restated_date ASC) AS valid_to,
+							     LEAD(publish_date, 1, '9999-12-31'::date) OVER (
+							         PARTITION BY ticker 
+							         ORDER BY publish_date ASC, restated_date ASC
+							     ) AS valid_to,
 							     revenue,
 							     net_income,
 							     ebitda,
@@ -41,21 +42,21 @@ WITH fundamental_timeline AS (-- Step 1: Isolate TTM data and build explicit poi
 							     net_margin,
 							     current_ratio,
 							     debt_to_equity,
-							     inventory_turnover,
-							     asset_turnover,
 							     shares_stabilized,
 							     earnings_per_share,
-							     fcf_per_share
+							     fcf_per_share,
+							     -- Pulling base variables directly to avoid division hacks in the daily outer select
+							     (net_income / NULLIF(return_on_equity, 0)) AS derived_total_equity,
+							     (revenue / NULLIF(asset_turnover, 0)) AS derived_total_assets
 							  FROM v_derived_metrics
 							  WHERE variant = 'ttm' 
 							    AND publish_date IS NOT NULL
                               ),
-     share_price AS (-- Pre-calculating moving averages on the raw price table to optimize performance
-					 SELECT 
+     share_price AS (SELECT 
 					    p.*,
-						AVG(p.close)  OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 49  PRECEDING AND CURRENT ROW) AS ma_50,
-						AVG(p.close)  OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW) AS ma_200,
-						AVG(p.volume) OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 29  PRECEDING AND CURRENT ROW) AS vol_30
+					    AVG(p.close) OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 49 PRECEDING AND CURRENT ROW) AS ma_50,
+					    AVG(p.close) OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 199 PRECEDING AND CURRENT ROW) AS ma_200,
+					    AVG(p.volume) OVER (PARTITION BY p.ticker ORDER BY p.trade_date ROWS BETWEEN 29 PRECEDING AND CURRENT ROW) AS vol_30
 					 FROM public.t_share_price p
                      )
                                  SELECT
@@ -64,45 +65,49 @@ WITH fundamental_timeline AS (-- Step 1: Isolate TTM data and build explicit poi
                                      CASE
                                          WHEN p.trade_date = MAX(p.trade_date) OVER (PARTITION BY p.ticker, DATE_TRUNC('month', p.trade_date)) THEN 'Y'
                                          ELSE 'N'
-                                         END                                                                AS flag_last_day_of_month,
+                                         END                                                         AS flag_last_day_of_month,
                                      p.ticker,
                                      p.market,
                                      p.currency,
                                      -- Core Market Pricing & Technical Momentum
-                                     p.close                                                                AS share_price,
+                                     p.close                                                         AS share_price,
                                      p.volume,
                                      ROUND(((p.close - p.ma_50) / NULLIF(p.ma_50, 0) * 100):: numeric,
-                                           2)                                                               AS pct_from_50d_ma,
+                                           2)                                                        AS pct_from_50d_ma,
                                      ROUND(((p.close - p.ma_200) / NULLIF(p.ma_200, 0) * 100):: numeric,
-                                           2)                                                               AS pct_from_200d_ma,
-                                     ROUND((p.volume / NULLIF(p.vol_30, 0)):: numeric, 2)                   AS volume_velocity,
+                                           2)                                                        AS pct_from_200d_ma,
+                                     ROUND((p.volume / NULLIF(p.vol_30, 0)):: numeric, 2)            AS volume_velocity,
                                      -- Fundamental Context
-                                     f.fiscal_year                                                          AS active_fiscal_year,
-                                     f.fiscal_period                                                        AS active_fiscal_period,
-                                     f.valid_from                                                           AS active_report_publish_date,
+                                     f.fiscal_year                                                   AS active_fiscal_year,
+                                     f.fiscal_period                                                 AS active_fiscal_period,
+                                     f.valid_from                                                    AS active_report_publish_date,
                                      -- 1. Valuation & Size Metrics
-                                     (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized))        AS market_capitalization,
-                                     p.close / NULLIF(f.earnings_per_share, 0)                              AS pe_ratio,
-                                     f.earnings_per_share / NULLIF(p.close, 0)                              AS earnings_yield,
-                                     p.close / NULLIF(f.fcf_per_share, 0)                                   AS price_to_fcf,
+                                     (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) AS market_capitalization,
+                                     p.close / NULLIF(f.earnings_per_share, 0)                       AS pe_ratio,
+                                     f.earnings_per_share / NULLIF(p.close, 0)                       AS earnings_yield,
+                                     p.close / NULLIF(f.fcf_per_share, 0)                            AS price_to_fcf,
                                      (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) /
-                                     NULLIF(f.revenue, 0)                                                   AS price_to_sales,
+                                     NULLIF(f.revenue, 0)                                            AS price_to_sales,
                                      (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) /
-                                     NULLIF((f.net_income / NULLIF(f.return_on_equity, 0)), 0)              AS price_to_book,
+                                     NULLIF(f.derived_total_equity, 0)                               AS price_to_book,
                                      -- 2. Deep Value Graham Signals
                                      (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) /
-                                     NULLIF(f.ncav, 0)                                                      AS price_to_ncav,
+                                     NULLIF(f.ncav, 0)                                               AS price_to_ncav,
                                      (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) /
-                                     NULLIF(f.net_net_working_capital, 0)                                   AS price_to_nnwc,
+                                     NULLIF(f.net_net_working_capital, 0)                            AS price_to_nnwc,
                                      CASE
                                          WHEN (p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) <
                                               f.net_net_working_capital THEN 1
-                                         ELSE 0 END                                                         AS is_graham_net_net,
-                                     -- 3. Enterprise Value (EV) Multiples
-                                     ((p.close * COALESCE(p.shares_outstanding, f.shares_stabilized))
-                                         + (f.revenue / NULLIF(f.asset_turnover, 0) -
-                                            f.net_income / NULLIF(f.return_on_equity, 0))
-                                         )                                                                  AS enterprise_value,
+                                         ELSE 0
+                                         END                                                         AS is_graham_net_net,
+                                     -- 3. Enterprise Value (EV) Multiples (Corrected: Market Cap + Total Liabilities)
+                                     -- Total Liabilities is computed as: Total Assets - Total Equity
+                                     ((p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) +
+                                      (f.derived_total_assets - f.derived_total_equity))             AS enterprise_value,
+                                     ((p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) +
+                                      (f.derived_total_assets - f.derived_total_equity))
+                                         /
+                                     NULLIF(f.ebitda, 0)                                             AS ev_to_ebitda,
                                      -- 4. Capital Efficiency
                                      f.return_on_capital_employed,
                                      f.return_on_equity,

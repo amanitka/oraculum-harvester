@@ -3,6 +3,10 @@ simfin:
   chunkSize: $ORACULUM_SIMFIN_CHUNK_SIZE|500000
   refreshDays: $ORACULUM_SIMFIN_REFRESH_DAYS|1
 
+alphaVantage:
+  apiUrl: https://www.alphavantage.co
+  apiKey: $ORACULUM_ALPHA_VANTAGE_API_KEY
+
 kafka:
   brokers: $ORACULUM_KAFKA_BROKERS
   topics:
