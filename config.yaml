@@ -42,39 +42,39 @@ llm:
   deployments:
     # --- Tier 1: Flash Models (for simple, high-volume tasks) ---
     - alias: "flash-tier"
-      model: "gemini/gemini-1.5-flash-latest"
-      api_key: $GEMINI_API_KEY
+      model: "gemini/gemini-3.1-flash-lite"
+      api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
-      order: 1 # Primary: Google's cheap and fast model.
+      order: 1 # Primary: Newest, agentic, and extremely cheap.
     - alias: "flash-tier"
-      model: "llama3-8b-8192"
-      api_key: $GROQ_API_KEY
-      api_base: "https://api.groq.com/openai/v1"
-      order: 2 # Fallback: Fast and cheap Groq model.
+      model: "gpt-4o-mini"
+      api_key: ${OPENAI_API_KEY}
+      api_base: "https://api.openai.com/v1"
+      order: 2 # Fallback: OpenAI's cost-effective model.
 
     # --- Tier 2: Pro Models (for robust analysis) ---
     - alias: "pro-tier"
-      model: "gemini/gemini-1.5-pro-latest"
-      api_key: $GEMINI_API_KEY
+      model: "gemini/gemini-3-flash"
+      api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
-      order: 1 # Primary: Google's flagship model.
+      order: 1 # Primary: Google's newest production model for agentic work.
     - alias: "pro-tier"
-      model: "llama3-70b-8192"
-      api_key: $GROQ_API_KEY
-      api_base: "https://api.groq.com/openai/v1"
-      order: 2 # Fallback: Powerful 70B model.
+      model: "gpt-4o"
+      api_key: ${OPENAI_API_KEY}
+      api_base: "https://api.openai.com/v1"
+      order: 2 # Fallback: Powerful OpenAI model.
 
     # --- Tier 3: Specialist Models (for critical synthesis) ---
     - alias: "specialist-tier"
-      model: "gemini/gemini-1.5-pro-latest"
-      api_key: $GEMINI_API_KEY
+      model: "gemini/gemini-3.1-pro"
+      api_key: ${GEMINI_API_KEY}
       api_base: "https://generativelanguage.googleapis.com/v1beta/"
       order: 1 # Primary: Flagship model for the most complex tasks.
     - alias: "specialist-tier"
-      model: "llama3-70b-8192"
-      api_key: $GROQ_API_KEY
-      api_base: "https://api.groq.com/openai/v1"
-      order: 2 # Fallback: Cross-provider failover to a powerful Groq model.
+      model: "gpt-4o"
+      api_key: ${OPENAI_API_KEY}
+      api_base: "https://api.openai.com/v1"
+      order: 2 # Fallback: Cross-provider failover to a powerful OpenAI model.
 
   # Global settings applied to all calls via the router
   router_settings:
