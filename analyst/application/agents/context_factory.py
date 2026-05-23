@@ -24,6 +24,7 @@ from analyst.infrastructure.repositories.income_statement import (
 )
 from analyst.infrastructure.repositories.share_price import SharePriceRepository
 from analyst.infrastructure.repositories.ticker import TickerRepository
+from analyst.infrastructure.repositories.news import NewsRepository
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ class AgentDataTools(DataTools):
         self._share_price_repo = SharePriceRepository(session)
         self._derived_metrics_repo = DerivedMetricsRepository(session)
         self._signals_repo = DailyMarketSignalsRepository(session)
+        self._news_repo = NewsRepository(session)
 
     def _to_markdown(self, items: list, title: str | None = None) -> str:
         """Converts a list of Pydantic models or dicts to a Markdown table."""
@@ -292,6 +294,30 @@ class AgentDataTools(DataTools):
             len(markdown),
         )
         return markdown
+
+    async def get_recent_news(self, ticker: str, days_back: int = 30) -> str:
+        """Returns recent news and sentiment for a ticker formatted as Markdown."""
+        news_items = await self._news_repo.fetch_recent_news_for_ticker(ticker=ticker, days_back=days_back)
+        if not news_items:
+            return "No recent news found for this ticker."
+
+        formatted_news = []
+        for item in news_items:
+            # Find the specific sentiment for the queried ticker
+            ticker_sentiment = next((s for s in item.sentiments if s.ticker == ticker), None)
+            sentiment_str = "N/A"
+            if ticker_sentiment:
+                sentiment_str = f"{ticker_sentiment.ticker_sentiment_label} ({ticker_sentiment.ticker_sentiment_score:.2f})"
+
+            formatted_news.append(
+                f"### {item.title}\n"
+                f"**Date:** {item.time_published.strftime('%Y-%m-%d')}\n"
+                f"**Source:** {item.source}\n"
+                f"**Ticker Sentiment:** {sentiment_str}\n"
+                f"**Summary:** {item.summary}\n"
+            )
+
+        return "\n---\n".join(formatted_news)
 
 
 class AgentContextFactory:

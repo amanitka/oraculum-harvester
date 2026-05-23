@@ -75,3 +75,7 @@ class DataTools(Protocol):
     ) -> str:
         """Returns derived metrics (ratios, per-share data) formatted as a Markdown table."""
         ...
+
+    async def get_recent_news(self, ticker: str, days_back: int = 30) -> str:
+        """Returns recent news and sentiment for a ticker formatted as Markdown."""
+        ...
