@@ -40,6 +40,7 @@ class DailyMarketSignalDB(SQLModel, table=True):  # type: ignore[call-arg,misc]
     price_to_nnwc: float | None = None
     is_graham_net_net: int
     enterprise_value: float | None = None
+    enterprise_value_to_ebitda: float | None = None
 
     return_on_capital_employed: float | None = None
     return_on_equity: float | None = None

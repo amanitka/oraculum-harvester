@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable, Sequence
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -22,6 +22,9 @@ from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
+from common.requests.fetch_news import FetchNewsRequest
+from analyst.infrastructure.engine import EngineProvider
+from analyst.infrastructure.news_repository import NewsRepository
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +35,7 @@ _DEFAULT_MISFIRE_GRACE_SECONDS: int = 300
 _REFRESH_PRICES_JOB_ID: str = "refresh_prices"
 _REFRESH_FUNDAMENTALS_JOB_ID: str = "refresh_fundamentals"
 _REFRESH_TICKERS_JOB_ID: str = "refresh_tickers"
+_REFRESH_NEWS_JOB_ID: str = "refresh_news"
 _JOB_DEFAULTS: dict[str, bool | int] = {
     "coalesce": True,
     "max_instances": 1,
@@ -61,6 +65,23 @@ def _build_fundamentals_requests() -> list[Request]:
 def _build_ticker_requests() -> list[Request]:
     """Return one ``FetchTickerRequest`` per configured market."""
     return [FetchTickerRequest(market=m) for m in _MARKETS]
+
+
+async def _build_news_requests() -> list[Request]:
+    """Return one ``FetchNewsRequest`` for an incremental refresh."""
+    factory = await EngineProvider.session_factory()
+    async with factory() as session:
+        repo = NewsRepository(session)
+        max_time = await repo.get_max_time_published()
+
+    if max_time:
+        # Add a small buffer to avoid missing news due to clock skew
+        from_datetime = max_time + timedelta(seconds=1)
+    else:
+        # If table is empty, start from today
+        from_datetime = datetime.combine(date.today(), time.min)
+
+    return [FetchNewsRequest(time_from=from_datetime.strftime("%Y%m%dT%H%M"))]
 
 
 async def _publish_all(broker: KafkaBroker, requests: Sequence[Request]) -> None:
@@ -123,12 +144,20 @@ def create_data_refresh_scheduler(broker: KafkaBroker) -> AsyncIOScheduler:
         job=refresh_fundamentals,
         broker=broker,
     )
+    _add_data_refresh_job(
+        scheduler,
+        job_id=_REFRESH_NEWS_JOB_ID,
+        cron_expression=refresh.news_cron,
+        job=refresh_news,
+        broker=broker,
+    )
 
     logger.info(
-        "Data refresh jobs configured [prices=%s fundamentals=%s tickers=%s]",
+        "Data refresh jobs configured [prices=%s fundamentals=%s tickers=%s news=%s]",
         refresh.price_cron,
         refresh.fundamentals_cron,
         refresh.ticker_cron,
+        refresh.news_cron,
     )
     return scheduler
 
@@ -146,3 +175,9 @@ async def refresh_fundamentals(broker: KafkaBroker) -> None:
 async def refresh_tickers(broker: KafkaBroker) -> None:
     """Publish ticker refresh requests for all configured markets."""
     await _publish_all(broker, _build_ticker_requests())
+
+
+async def refresh_news(broker: KafkaBroker) -> None:
+    """Publish news and sentiment refresh requests."""
+    requests = await _build_news_requests()
+    await _publish_all(broker, requests)

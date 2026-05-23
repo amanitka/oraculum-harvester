@@ -7,6 +7,7 @@ from common.domain.cash_flow_statement import (
     CashFlowStatementTemplate,
 )
 from common.domain.share_price import SharePrice, SharePriceBatch
+from common.domain.news import NewsArticle, NewsFeed, NewsTickerSentiment, TopicRelevance
 
 __all__ = [
     "BalanceSheet",
@@ -19,4 +20,8 @@ __all__ = [
     "SharePriceBatch",
     "Ticker",
     "DataFileReadyEvent",
+    "NewsArticle",
+    "NewsFeed",
+    "NewsTickerSentiment",
+    "TopicRelevance",
 ]

@@ -20,6 +20,7 @@ class _AnalystRefreshConfig:
         self.price_cron: str = source.get("analyst.refresh.priceCron", "0 7 * * *")
         self.fundamentals_cron: str = source.get("analyst.refresh.fundamentalsCron", "0 0 * * 0")
         self.ticker_cron: str = source.get("analyst.refresh.tickerCron", "0 0 1 * *")
+        self.news_cron: str = source.get("analyst.refresh.newsCron", "0 */4 * * *")
 
 
 class _AnalystCleanupConfig:

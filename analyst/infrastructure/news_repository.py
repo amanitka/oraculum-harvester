@@ -6,7 +6,9 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, List, Dict, Any
+from datetime import datetime
 
+from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +25,12 @@ class NewsRepository:
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_max_time_published(self) -> datetime | None:
+        """Returns the latest time_published from the database, or None if empty."""
+        stmt = select(func.max(News.time_published))
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def batch_upsert_news(self, articles: List[NewsArticle]) -> None:
         """

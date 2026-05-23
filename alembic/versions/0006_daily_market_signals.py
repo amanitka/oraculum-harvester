@@ -107,7 +107,7 @@ WITH fundamental_timeline AS (SELECT
                                      ((p.close * COALESCE(p.shares_outstanding, f.shares_stabilized)) +
                                       (f.derived_total_assets - f.derived_total_equity))
                                          /
-                                     NULLIF(f.ebitda, 0)                                             AS ev_to_ebitda,
+                                     NULLIF(f.ebitda, 0)                                             AS enterprise_value_to_ebitda,
                                      -- 4. Capital Efficiency
                                      f.return_on_capital_employed,
                                      f.return_on_equity,

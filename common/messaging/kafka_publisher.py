@@ -27,6 +27,7 @@ class KafkaRequestPublisher:
             "fetch_share_price": config.harvester_request_topic,
             "fetch_market": config.harvester_request_topic,
             "fetch_industry": config.harvester_request_topic,
+            "fetch_news": config.harvester_request_topic,
             # Analyst requests go to the analyst topic
             "analyze_ticker": config.topics.analyst_request,
         }

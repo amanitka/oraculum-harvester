@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import date
+from datetime import date, time, datetime
 from uuid import UUID
 
 import streamlit as st
@@ -27,6 +27,7 @@ from application.refresh_request_factory import (
     build_ticker_request,
     build_market_request,
     build_industry_request,
+    build_news_request,
 )
 from application.refresh_service import RefreshService
 from application.analysis_trigger import AnalysisTrigger
@@ -155,6 +156,43 @@ def _render_share_price_form() -> None:
         st.error("Failed to queue share-price refresh. Check logs for details.")
 
 
+def _render_news_form() -> None:
+    """Render the news and sentiment refresh form."""
+    st.subheader("News & Sentiment Refresh")
+    with st.form("refresh_news_form"):
+        has_from_date = st.checkbox(
+            "Use incremental from_date",
+            value=True,
+            key="news_has_from_date",
+        )
+        selected_from_date = st.date_input(
+            "From date",
+            value=date.today(),
+            disabled=not has_from_date,
+            key="news_from_date",
+        )
+        is_submitted = st.form_submit_button("Queue news refresh")
+
+    if not is_submitted:
+        return
+
+    from_date = selected_from_date if has_from_date else None
+    if from_date:
+        # Combine date with midnight time for the request
+        from_datetime = datetime.combine(from_date, time.min)
+    else:
+        from_datetime = None
+
+    try:
+        request = build_news_request(time_from=from_datetime)
+        _trigger_request(request)
+    except ValueError as error:
+        st.error(str(error))
+    except Exception:
+        logger.exception("Failed to queue news refresh")
+        st.error("Failed to queue news refresh. Check logs for details.")
+
+
 def _render_statement_form(
     *,
     form_key: str,
@@ -206,6 +244,7 @@ def _render_refresh_tab() -> None:
         metadata_tab,
         ticker_tab,
         share_price_tab,
+        news_tab,
         income_tab,
         balance_tab,
         cash_flow_tab,
@@ -214,6 +253,7 @@ def _render_refresh_tab() -> None:
             "Metadata",
             "Ticker",
             "Share Price",
+            "News & Sentiment",
             "Income Statement",
             "Balance Sheet",
             "Cash Flow",
@@ -225,6 +265,8 @@ def _render_refresh_tab() -> None:
         _render_ticker_form()
     with share_price_tab:
         _render_share_price_form()
+    with news_tab:
+        _render_news_form()
     with income_tab:
         _render_statement_form(
             form_key="refresh_income_statement_form",
@@ -426,11 +468,11 @@ def main() -> None:
     st.set_page_config(page_title="Oraculum Operations", layout="wide")
     st.title("Oraculum Operations")
 
-    refresh_tab, analysis_tab = st.tabs(["Refresh", "Analysis"])
-    with refresh_tab:
-        _render_refresh_tab()
+    analysis_tab, refresh_tab = st.tabs(["Analysis", "Refresh"])
     with analysis_tab:
         _render_analysis_tab()
+    with refresh_tab:
+        _render_refresh_tab()
 
 
 if __name__ == "__main__":

@@ -6,15 +6,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
-
-from faststream.kafka import AsyncPublisher
+from typing import TYPE_CHECKING, List, Optional, Any
 
 from common.domain.news import NewsArticle, NewsFeed
 
 if TYPE_CHECKING:
-    from harvester.providers.alphavantage_provider import AlphavantageProvider
+    from harvester.providers.alphavantage_provider import AlphaVantageProvider
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +19,7 @@ logger = logging.getLogger(__name__)
 class NewsService:
     """Orchestrates fetching, transforming, and publishing news data."""
 
-    def __init__(self, provider: AlphavantageProvider, publisher: AsyncPublisher) -> None:
+    def __init__(self, provider: AlphaVantageProvider, publisher: Any) -> None:
         self._provider = provider
         self._publisher = publisher
 

@@ -12,6 +12,7 @@ from common.requests.share_price import FetchSharePriceRequest
 from common.requests.ticker import FetchTickerRequest
 from common.requests.fetch_market import FetchMarketRequest
 from common.requests.fetch_industry import FetchIndustryRequest
+from common.requests.fetch_news import FetchNewsRequest
 
 StatementVariant: TypeAlias = Literal["annual", "quarterly", "ttm"]
 StatementTemplate: TypeAlias = Literal["general", "banks", "insurance"]
@@ -33,6 +34,13 @@ def build_market_request() -> FetchMarketRequest:
 def build_industry_request() -> FetchIndustryRequest:
     """Build an industry refresh request."""
     return FetchIndustryRequest()
+
+
+def build_news_request(time_from: date | None) -> FetchNewsRequest:
+    """Build a news and sentiment refresh request."""
+    return FetchNewsRequest(
+        time_from=time_from.strftime("%Y%m%dT%H%M") if time_from else None
+    )
 
 
 def build_share_price_request(
