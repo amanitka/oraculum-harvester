@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Dict, List
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from analyst.infrastructure.models import News, NewsTicker
 
@@ -33,24 +32,48 @@ class NewsRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def fetch_recent_news_for_ticker(self, ticker: str, days_back: int = 30) -> List[News]:
+    async def fetch_recent_news_for_ticker(self, ticker: str, days_back: int = 30) -> List[Dict[str, Any]]:
         """
-        Fetches recent news articles for a specific ticker, including their
-        ticker-specific sentiment data.
+        Fetches recent news and ticker sentiments as separate lists and joins them in code.
         """
         from_date = datetime.now(timezone.utc) - timedelta(days=days_back)
 
-        stmt = (
-            select(News)
-            .join(NewsTicker, News.id == NewsTicker.news_id)
+        # 1. Fetch all relevant ticker sentiment data
+        ticker_stmt = (
+            select(NewsTicker)
             .where(NewsTicker.ticker == ticker)
-            .where(News.time_published >= from_date)
-            .options(joinedload(News.sentiments).where(NewsTicker.ticker == ticker))
-            .order_by(News.time_published.desc())
+            .where(NewsTicker.time_published >= from_date)
         )
+        ticker_results = await self._session.execute(ticker_stmt)
+        sentiments = ticker_results.scalars().all()
 
-        result = await self._session.execute(stmt)
-        return result.scalars().unique().all()
+        if not sentiments:
+            return []
+
+        # 2. Get the unique news IDs from the sentiment data
+        news_ids = {s.news_id for s in sentiments}
+
+        # 3. Fetch the corresponding news articles
+        news_stmt = select(News).where(News.id.in_(news_ids))
+        news_results = await self._session.execute(news_stmt)
+        news_map = {n.id: n for n in news_results.scalars().all()}
+
+        # 4. Join the data in Python
+        joined_data = []
+        for sentiment in sentiments:
+            news_article = news_map.get(sentiment.news_id)
+            if news_article:
+                joined_data.append(
+                    {
+                        "article": news_article,
+                        "sentiment": sentiment,
+                    }
+                )
+        
+        # Sort by publication date descending
+        joined_data.sort(key=lambda x: x["article"].time_published, reverse=True)
+
+        return joined_data
 
     async def batch_upsert_news(self, articles: List[NewsArticle]) -> None:
         """

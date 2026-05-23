@@ -172,3 +172,35 @@ Rules:
 - [ ] No TODOs left without an owner and ticket reference.
 - [ ] No new global singletons, bare excepts, or `print()` calls.
 - [ ] Secrets/configs unchanged or documented.
+
+---
+
+## 15. Common Pitfalls & Explicit Patterns (This Repo)
+
+This section documents specific, non-obvious patterns in this codebase that require manual "housekeeping" steps. Forgetting these steps is a common source of errors.
+
+### 15.1. Adding New Domain Models or Requests
+
+When adding a new Pydantic model to `common/domain` or a new request model to `common/requests`, two files must be changed:
+1.  **The new module file** (e.g., `common/domain/news.py`).
+2.  **The package's `__init__.py` file** (e.g., `common/domain/__init__.py`). You must import the new class and add it to the `__all__` list. This "barrel" pattern makes the class part of the package's public API.
+
+### 15.2. Adding a New Request Type to a Topic
+
+When adding a new request type that will be sent to the `harvester_request_topic`, two files must be changed:
+1.  **The new request module** (e.g., `common/requests/fetch_news.py`).
+2.  **`common/requests/__init__.py`**: The new request class must be added to the `AnyRequest` discriminated union. This is critical for FastStream to correctly deserialize messages.
+
+### 15.3. FastStream Application Structure
+
+- **Import Order Matters**: In `harvester/app.py` and `analyst/app.py`, the `broker` object must be created *before* any modules containing `@broker.subscriber` or `@broker.publisher` decorators are imported. This means local application imports should come after the `broker` is instantiated.
+- **Circular Imports**: A `...subscriber` module cannot import the `app` module that imports it. Dependencies must flow in one direction.
+
+### 15.4. Alembic Migrations
+
+- **`down_revision` Must Be Exact**: When creating a new migration, the `down_revision` variable must exactly match the `revision` variable of the previous migration file (e.g., `'0006_daily_market_signals'`, not just `'0006'`).
+
+### 15.5. Data Ingestion & Validation Patterns
+
+- **Enrich, Then Validate**: When processing data from external APIs, do not validate against a strict Pydantic model immediately. First, perform any necessary enrichment (e.g., generating IDs, denormalizing metadata). Then, validate the *enriched* data against the final, strict model. This prevents validation errors on fields that are generated internally.
+- **De-duplicate Before Batch `UPSERT`**: When preparing a batch of data for a database `INSERT ... ON CONFLICT` (UPSERT) operation, you **must** programmatically de-duplicate the data *within the batch* first. The `ON CONFLICT` clause only handles conflicts with data already in the table, not duplicates within the incoming batch itself. Failure to do this will result in a `CardinalityViolation` error.

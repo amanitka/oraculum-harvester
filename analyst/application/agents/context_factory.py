@@ -117,7 +117,7 @@ class AgentDataTools(DataTools):
 
         try:
             industry_id = int(profile["industry_id"])
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             logger.info(
                 "AgentDataTools.resolve_template fetched %d rows for ticker=%s resolved_template=%s",
                 row_count,
@@ -297,24 +297,23 @@ class AgentDataTools(DataTools):
 
     async def get_recent_news(self, ticker: str, days_back: int = 30) -> str:
         """Returns recent news and sentiment for a ticker formatted as Markdown."""
-        news_items = await self._news_repo.fetch_recent_news_for_ticker(ticker=ticker, days_back=days_back)
-        if not news_items:
+        joined_items = await self._news_repo.fetch_recent_news_for_ticker(ticker=ticker, days_back=days_back)
+        if not joined_items:
             return "No recent news found for this ticker."
 
         formatted_news = []
-        for item in news_items:
-            # Find the specific sentiment for the queried ticker
-            ticker_sentiment = next((s for s in item.sentiments if s.ticker == ticker), None)
-            sentiment_str = "N/A"
-            if ticker_sentiment:
-                sentiment_str = f"{ticker_sentiment.ticker_sentiment_label} ({ticker_sentiment.ticker_sentiment_score:.2f})"
+        for item in joined_items:
+            article = item["article"]
+            sentiment = item["sentiment"]
+            
+            sentiment_str = f"{sentiment.ticker_sentiment_label} ({sentiment.ticker_sentiment_score:.2f})"
 
             formatted_news.append(
-                f"### {item.title}\n"
-                f"**Date:** {item.time_published.strftime('%Y-%m-%d')}\n"
-                f"**Source:** {item.source}\n"
+                f"### {article.title}\n"
+                f"**Date:** {article.time_published.strftime('%Y-%m-%d')}\n"
+                f"**Source:** {article.source}\n"
                 f"**Ticker Sentiment:** {sentiment_str}\n"
-                f"**Summary:** {item.summary}\n"
+                f"**Summary:** {article.summary}\n"
             )
 
         return "\n---\n".join(formatted_news)

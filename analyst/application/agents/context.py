@@ -4,9 +4,9 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from analyst.application.agents.tools import DataTools
 from common.domain.income_statement import IncomeStatementTemplate, StatementVariant
 from common.llm.base import LlmClient
-from analyst.application.agents.tools import DataTools
 
 
 @dataclass

@@ -6,58 +6,56 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from analyst.application.agents.base import Agent, AgentContext, AgentOutput
 from analyst.application.agents.prompts import (
     load_prompt,
     NEWS_SUMMARY_PROMPT,
 )
 
 if TYPE_CHECKING:
-    from analyst.application.agents.tools import DataTools
     from common.llm.client import LlmClient
 
 logger = logging.getLogger(__name__)
 
 
-class NewsAgent:
+class NewsOutput(AgentOutput):
+    summary: str
+
+
+class NewsAgent(Agent[NewsOutput]):
     """
     An agent that analyzes recent news articles to generate a summary of key events
     and prevailing sentiment.
     """
+    name = "News"
+    output_model = NewsOutput
 
-    def __init__(self, llm_client: LlmClient, tools: DataTools):
-        self._llm_client = llm_client
-        self._tools = tools
+    def __init__(self) -> None:
+        self.system_prompt = load_prompt(NEWS_SUMMARY_PROMPT)
 
-    async def analyze_news(self, ticker: str) -> str:
+    async def run(self, ctx: AgentContext) -> AgentOutput[NewsOutput]:
         """
         Fetches recent news, invokes an LLM to summarize it, and returns the result.
-
-        Args:
-            ticker: The ticker symbol to analyze.
-
-        Returns:
-            A Markdown-formatted string summarizing the news and sentiment.
         """
-        logger.info("NewsAgent starting analysis for ticker: %s", ticker)
+        logger.info("NewsAgent starting analysis for ticker: %s", ctx.ticker)
 
         # Fetch recent news using the data tools
-        news_markdown = await self._tools.get_recent_news(ticker=ticker, days_back=30)
+        news_markdown = await ctx.tools.get_recent_news(ticker=ctx.ticker, days_back=30)
 
         if "No recent news found" in news_markdown:
-            logger.warning("No recent news found for ticker: %s", ticker)
-            return "No significant recent news found for this ticker."
+            logger.warning("No recent news found for ticker: %s", ctx.ticker)
+            return self.create_output(summary="No significant recent news found for this ticker.")
 
         # Prepare and execute the LLM call
-        prompt = load_prompt(NEWS_SUMMARY_PROMPT)
         messages = [
-            {"role": "system", "content": prompt},
+            {"role": "system", "content": self.system_prompt},
             {
                 "role": "user",
-                "content": f"Here is the recent news for {ticker}:\n\n{news_markdown}",
+                "content": f"Here is the recent news for {ctx.ticker}:\n\n{news_markdown}",
             },
         ]
 
-        response = await self._llm_client.get_completion(messages)
+        response = await ctx.llm.get_completion(messages)
 
-        logger.info("NewsAgent successfully generated summary for ticker: %s", ticker)
-        return response
+        logger.info("NewsAgent successfully generated summary for ticker: %s", ctx.ticker)
+        return self.create_output(summary=response)

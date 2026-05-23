@@ -1,21 +1,20 @@
 """
 SQLModel definitions for news and sentiment data.
 """
-
 from __future__ import annotations
 
 from datetime import datetime
 from typing import List, Optional, Any
 
 from sqlmodel import Field, SQLModel
-from sqlalchemy import Column, Index, PrimaryKeyConstraint, ForeignKeyConstraint, String, TIMESTAMP, TEXT, JSON
+from sqlalchemy import Column, Index, PrimaryKeyConstraint, String, TIMESTAMP, TEXT, JSON
 from sqlalchemy.dialects.postgresql import REAL
 
 from analyst.infrastructure.models.base import AuditMixin
 
 
 class News(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
-    __tablename__ = "t_news"
+    __tablename__ = 't_news'
 
     id: str = Field(sa_column=Column(String(64), nullable=False, comment="SHA256 hash"))
     title: str = Field(sa_column=Column(TEXT, nullable=False))
@@ -34,16 +33,16 @@ class News(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
     relevance_score_definition: Optional[str] = Field(default=None, sa_column=Column(TEXT))
 
     __table_args__ = (
-        PrimaryKeyConstraint("id", "time_published"),
-        Index("ix_news_time_published", "time_published"),
+        PrimaryKeyConstraint('id', 'time_published'),
+        Index('ix_news_time_published', 'time_published'),
         {
-            "postgresql_partition_by": "RANGE (time_published)",
-        },
+            'postgresql_partition_by': 'RANGE (time_published)',
+        }
     )
 
 
 class NewsTicker(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,misc]
-    __tablename__ = "t_news_ticker"
+    __tablename__ = 't_news_ticker'
 
     news_id: str = Field(sa_column=Column(String(64), nullable=False))
     time_published: datetime = Field(sa_column=Column(TIMESTAMP(timezone=True), nullable=False))
@@ -53,10 +52,9 @@ class NewsTicker(AuditMixin, SQLModel, table=True):  # type: ignore[call-arg,mis
     ticker_sentiment_label: Optional[str] = Field(default=None, max_length=50)
 
     __table_args__ = (
-        PrimaryKeyConstraint("news_id", "ticker", "time_published"),
-        ForeignKeyConstraint(["news_id", "time_published"], ["t_news.id", "t_news.time_published"], ondelete="CASCADE"),
-        Index("ix_news_ticker_ticker", "ticker"),
+        PrimaryKeyConstraint('news_id', 'ticker', 'time_published'),
+        Index('ix_news_ticker_ticker', 'ticker'),
         {
-            "postgresql_partition_by": "RANGE (time_published)",
-        },
+            'postgresql_partition_by': 'RANGE (time_published)',
+        }
     )
