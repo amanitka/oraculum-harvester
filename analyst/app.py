@@ -153,3 +153,15 @@ async def _ensure_share_price_partitions() -> None:
     async with factory() as session:
         await PartitionManager.ensure_share_price_partitions(session)
         await session.commit()
+
+
+@app.on_startup
+async def _ensure_news_partitions() -> None:
+    """Create any missing yearly partitions for news tables on startup."""
+    from analyst.infrastructure.engine import EngineProvider
+    from analyst.infrastructure.partition_manager import PartitionManager
+
+    factory = await EngineProvider.session_factory()
+    async with factory() as session:
+        await PartitionManager.ensure_news_partitions(session)
+        await session.commit()

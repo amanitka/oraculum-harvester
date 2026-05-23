@@ -10,17 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 class AlphaVantageProvider:
-
     def __init__(self):
         self.api_key = config.alpha_vantage_api_key
         self.base_url = f"{config.alpha_vantage_api_url}/query"
 
     def fetch_news_sentiment(self, time_from: Optional[str] = None, time_to: Optional[str] = None) -> json:
-        params = {
-            "function": "NEWS_SENTIMENT",
-            "apikey": self.api_key,
-            "limit": 1000
-        }
+        params = {"function": "NEWS_SENTIMENT", "apikey": self.api_key, "limit": 1000}
         if time_from:
             params["time_from"] = time_from
         if time_to:

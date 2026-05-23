@@ -8,6 +8,7 @@ from analyst.infrastructure.models.income_statement import IncomeStatementDB
 from analyst.infrastructure.models.run_log import IngestionRunLogDB
 from analyst.infrastructure.models.share_price import SharePriceDB
 from analyst.infrastructure.models.ticker import TickerDB
+from analyst.infrastructure.models.news import News, NewsTicker
 
 __all__ = [
     "BalanceSheetDB",
@@ -18,4 +19,6 @@ __all__ = [
     "IngestionRunLogDB",
     "SharePriceDB",
     "TickerDB",
+    "News",
+    "NewsTicker",
 ]

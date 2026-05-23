@@ -52,7 +52,7 @@ class SynthesizerAgent(Agent[SynthesizerOutput]):
             messages=messages,
             model="specialist-tier",
             max_tokens=config.llm.router_settings.max_tokens,
-            temperature=0.3, # Overriding deterministic default for synthesis
+            temperature=0.3,  # Overriding deterministic default for synthesis
             response_format=self.output_model,
         )
 

@@ -55,6 +55,7 @@ class _KafkaTopicsConfig:
         self.market: str = source.get("kafka.topics.market")
         self.industry: str = source.get("kafka.topics.industry")
         self.data_file_ready: str = source.get("kafka.topics.dataFileReady", "oraculum.data_file_ready")
+        self.news: str = source.get("kafka.topics.news", "oraculum.news")
 
 
 class _LlmDeploymentConfig:
@@ -83,12 +84,8 @@ class _LlmConfig:
 
     def __init__(self, source: EnvYAML) -> None:
         deployments_data = source.get("llm.deployments", [])
-        self.deployments: List[_LlmDeploymentConfig] = [
-            _LlmDeploymentConfig(d) for d in deployments_data
-        ]
-        self.router_settings: _LlmRouterSettingsConfig = _LlmRouterSettingsConfig(
-            source.get("llm.router_settings", {})
-        )
+        self.deployments: List[_LlmDeploymentConfig] = [_LlmDeploymentConfig(d) for d in deployments_data]
+        self.router_settings: _LlmRouterSettingsConfig = _LlmRouterSettingsConfig(source.get("llm.router_settings", {}))
 
     @staticmethod
     def _positive_int(value: object, key: str) -> int:
