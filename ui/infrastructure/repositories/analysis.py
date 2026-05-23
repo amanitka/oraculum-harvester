@@ -3,6 +3,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlmodel import select, func
 
+# To prevent duplicate metadata registration, import the model directly
+# from its module instead of through the analyst's __init__.py barrel file.
 from analyst.infrastructure.models.analysis import AnalysisDB
 
 

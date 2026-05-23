@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import TYPE_CHECKING, List, Optional, Any
+from typing import TYPE_CHECKING, List, Optional, Any, Dict
 
-from common.domain.news import NewsArticle, NewsFeed
+from common.domain.news import NewsArticle
 
 if TYPE_CHECKING:
     from harvester.providers.alphavantage_provider import AlphaVantageProvider
@@ -35,16 +35,14 @@ class NewsService:
             The number of news articles published.
         """
         logger.info("Starting news data refresh...")
-        raw_data = await self._provider.fetch_news_sentiment(time_from=time_from, time_to=time_to)
+        # The provider's method is synchronous, so we don't await it.
+        raw_data = self._provider.fetch_news_sentiment(time_from=time_from, time_to=time_to)
 
         if not raw_data or not raw_data.get("feed"):
             logger.warning("No news data received from provider.")
             return 0
 
-        # Validate and parse the raw response
-        news_feed = NewsFeed.model_validate(raw_data)
-
-        enriched_articles = self._enrich_articles(news_feed)
+        enriched_articles = self._enrich_and_validate(raw_data)
 
         if not enriched_articles:
             logger.info("No articles to publish after enrichment.")
@@ -55,33 +53,44 @@ class NewsService:
         logger.info("Successfully published %d news articles.", len(enriched_articles))
         return len(enriched_articles)
 
-    def _enrich_articles(self, news_feed: NewsFeed) -> List[NewsArticle]:
+    def _enrich_and_validate(self, raw_data: Dict[str, Any]) -> List[NewsArticle]:
         """
-        Enriches raw article data with a unique ID and denormalized metadata.
+        Enriches raw article data with a unique ID and denormalized metadata,
+        then validates the result against the NewsArticle Pydantic model.
         """
+        sentiment_def = raw_data.get("sentiment_score_definition", "")
+        relevance_def = raw_data.get("relevance_score_definition", "")
+        raw_feed = raw_data.get("feed", [])
+
         enriched = []
-        for article in news_feed.feed:
+        for raw_article in raw_feed:
             # Denormalize metadata for data lineage
-            article.sentiment_score_definition = news_feed.sentiment_score_definition
-            article.relevance_score_definition = news_feed.relevance_score_definition
+            raw_article["sentiment_score_definition"] = sentiment_def
+            raw_article["relevance_score_definition"] = relevance_def
 
             # Generate a deterministic, unique ID for idempotency
-            article.id = self._generate_article_id(article)
+            raw_article["id"] = self._generate_article_id(raw_article)
 
-            enriched.append(article)
+            # Now validate against the strict Pydantic model
+            try:
+                article = NewsArticle.model_validate(raw_article)
+                enriched.append(article)
+            except Exception as e:
+                 logger.error(f"Failed to validate article {raw_article.get('title')}: {e}")
+
         return enriched
 
     @staticmethod
-    def _generate_article_id(article: NewsArticle) -> str:
+    def _generate_article_id(raw_article: Dict[str, Any]) -> str:
         """
         Creates a SHA256 hash from key article fields to serve as a unique ID.
         """
         # Using a tuple of key fields to create a stable hash
         # URL is a strong candidate for uniqueness, but combining with time and title adds robustness.
         key_tuple = (
-            article.url,
-            article.time_published,
-            article.title,
+            raw_article.get("url", ""),
+            raw_article.get("time_published", ""),
+            raw_article.get("title", ""),
         )
         # Encode the tuple to a byte string before hashing
         encoded_key = str(key_tuple).encode("utf-8")

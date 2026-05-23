@@ -12,7 +12,10 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+# Import specific models directly to avoid SQLAlchemy metadata collisions
 from sqlmodel import select
+from analyst.infrastructure.models.ticker import TickerDB
 
 from common.config import config
 from common.messaging.kafka_publisher import KafkaRequestPublisher
@@ -32,9 +35,7 @@ from application.refresh_request_factory import (
 from application.refresh_service import RefreshService
 from application.analysis_trigger import AnalysisTrigger
 from infrastructure.repositories.analysis import AnalysisRepository
-from analyst.infrastructure.repositories.ticker import TickerRepository
-from analyst.infrastructure.repositories.market import MarketRepository
-from analyst.infrastructure.models.ticker import TickerDB
+
 
 logger = logging.getLogger(__name__)
 
