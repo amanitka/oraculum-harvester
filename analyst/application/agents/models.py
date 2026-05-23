@@ -154,6 +154,12 @@ class FundamentalsOutput(BaseModel):
     summary: str = Field(description="One sentence summary of the company's fundamental health.")
 
 
+class NewsOutput(BaseModel):
+    """The structured output produced by the NewsAgent."""
+
+    summary: str = Field(description="A summary of the most important news and events.")
+
+
 class RiskOutput(BaseModel):
     """The structured output produced by the RiskAgent."""
 

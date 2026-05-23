@@ -5,21 +5,18 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
+from pathlib import Path
 
 from analyst.application.agents.base import Agent, AgentContext, AgentOutput
-from analyst.application.agents.prompts import (
-    load_prompt,
-    NEWS_SUMMARY_PROMPT,
-)
+from analyst.application.agents.models import NewsOutput
+from common.config import config
 
 if TYPE_CHECKING:
     from common.llm.client import LlmClient
 
 logger = logging.getLogger(__name__)
 
-
-class NewsOutput(AgentOutput):
-    summary: str
+_PROMPT_PATH = Path(__file__).parent / "prompts" / "news.md"
 
 
 class NewsAgent(Agent[NewsOutput]):
@@ -31,7 +28,7 @@ class NewsAgent(Agent[NewsOutput]):
     output_model = NewsOutput
 
     def __init__(self) -> None:
-        self.system_prompt = load_prompt(NEWS_SUMMARY_PROMPT)
+        self.system_prompt = _PROMPT_PATH.read_text(encoding="utf-8")
 
     async def run(self, ctx: AgentContext) -> AgentOutput[NewsOutput]:
         """
@@ -44,7 +41,7 @@ class NewsAgent(Agent[NewsOutput]):
 
         if "No recent news found" in news_markdown:
             logger.warning("No recent news found for ticker: %s", ctx.ticker)
-            return self.create_output(summary="No significant recent news found for this ticker.")
+            return AgentOutput(result=NewsOutput(summary="No significant recent news found for this ticker."), tokens=0)
 
         # Prepare and execute the LLM call
         messages = [
@@ -55,7 +52,16 @@ class NewsAgent(Agent[NewsOutput]):
             },
         ]
 
-        response = await ctx.llm.get_completion(messages)
+        response = await ctx.llm.complete(
+            messages=messages,
+            model="flash-tier",
+            max_tokens=config.llm.router_settings.max_tokens,
+            temperature=config.llm.router_settings.temperature,
+            response_format=self.output_model,
+        )
+
+        result = self.output_model.model_validate_json(response.text)
+        total_tokens = response.input_tokens + response.output_tokens
 
         logger.info("NewsAgent successfully generated summary for ticker: %s", ctx.ticker)
-        return self.create_output(summary=response)
+        return AgentOutput(result=result, tokens=total_tokens)
