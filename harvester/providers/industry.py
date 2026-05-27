@@ -4,13 +4,19 @@ import logging
 from datetime import datetime, timezone
 from typing import Iterator
 
-import simfin as sf
 import pandas as pd
+import simfin as sf
 
 from common.config import config
 from common.domain.industry import Industry
 
 logger = logging.getLogger(__name__)
+
+SIMFIN_INDUSTRY_ID_KEY = "IndustryId"
+SIMFIN_SECTOR_KEY = "Sector"
+SIMFIN_INDUSTRY_NAME_KEY = "Industry"
+INDUSTRY_BANK_KEYWORD = "bank"
+INDUSTRY_INSURANCE_KEYWORD = "insurance"
 
 
 class IndustryProvider:
@@ -45,9 +51,28 @@ class IndustryProvider:
     @staticmethod
     def _data_row_to_industry(row: pd.Series, extracted_at: datetime) -> Industry | None:
         try:
-            payload = row.to_dict()
-            payload["extracted_at"] = extracted_at
+            source_payload = row.to_dict()
+            industry_name = source_payload.get(SIMFIN_INDUSTRY_NAME_KEY)
+            payload = {
+                "industryId": source_payload.get(SIMFIN_INDUSTRY_ID_KEY),
+                "sectorName": source_payload.get(SIMFIN_SECTOR_KEY),
+                "industryName": industry_name,
+                "statementTemplate": IndustryProvider._map_statement_template(industry_name),
+                "extractedAt": extracted_at,
+            }
             return Industry.model_validate(payload)
         except Exception as exc:
-            logger.warning(f"Skipping industry row {row.get('IndustryId', 'Unknown')}: {exc}")
+            logger.warning(f"Skipping industry row {row.get(SIMFIN_INDUSTRY_ID_KEY, 'Unknown')}: {exc}")
             return None
+
+    @staticmethod
+    def _map_statement_template(industry_name: str | None) -> str:
+        """Map SimFin industry names to internal statement templates."""
+        if not industry_name:
+            return "general"
+        normalized_name = industry_name.lower()
+        if INDUSTRY_BANK_KEYWORD in normalized_name:
+            return "banks"
+        if INDUSTRY_INSURANCE_KEYWORD in normalized_name:
+            return "insurance"
+        return "general"

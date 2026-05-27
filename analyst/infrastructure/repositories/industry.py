@@ -1,6 +1,5 @@
-from sqlmodel import select
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import Session
 
 from analyst.infrastructure.models.industry import IndustryDB
 from common.domain.industry import Industry
@@ -20,7 +19,7 @@ class IndustryRepository:
                     "industry_id": ind.industry_id,
                     "sector_name": ind.sector_name,
                     "industry_name": ind.industry_name,
-                    "statement_template": self._map_template(ind.industry_name),
+                    "statement_template": ind.statement_template,
                     "extracted_at": ind.extracted_at,
                 }
                 for ind in industries
@@ -38,13 +37,3 @@ class IndustryRepository:
         )
 
         self._session.execute(stmt)
-
-    @staticmethod
-    def _map_template(industry_name: str) -> str:
-        """Map SimFin industry name to an internal template."""
-        name_lower = industry_name.lower()
-        if "bank" in name_lower:
-            return "banks"
-        if "insurance" in name_lower:
-            return "insurance"
-        return "general"

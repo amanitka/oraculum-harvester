@@ -4,13 +4,17 @@ import logging
 from datetime import datetime, timezone
 from typing import Iterator
 
-import simfin as sf
 import pandas as pd
+import simfin as sf
 
 from common.config import config
 from common.domain.market import Market
 
 logger = logging.getLogger(__name__)
+
+SIMFIN_MARKET_ID_KEY = "MarketId"
+SIMFIN_MARKET_NAME_KEY = "Market Name"
+SIMFIN_CURRENCY_KEY = "Currency"
 
 
 class MarketProvider:
@@ -45,9 +49,14 @@ class MarketProvider:
     @staticmethod
     def _data_row_to_market(row: pd.Series, extracted_at: datetime) -> Market | None:
         try:
-            payload = row.to_dict()
-            payload["extracted_at"] = extracted_at
+            source_payload = row.to_dict()
+            payload = {
+                "marketId": source_payload.get(SIMFIN_MARKET_ID_KEY),
+                "marketName": source_payload.get(SIMFIN_MARKET_NAME_KEY),
+                "currency": source_payload.get(SIMFIN_CURRENCY_KEY),
+                "extractedAt": extracted_at,
+            }
             return Market.model_validate(payload)
         except Exception as exc:
-            logger.warning(f"Skipping market row {row.get('MarketId', 'Unknown')}: {exc}")
+            logger.warning(f"Skipping market row {row.get(SIMFIN_MARKET_ID_KEY, 'Unknown')}: {exc}")
             return None

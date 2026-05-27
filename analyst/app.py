@@ -143,7 +143,7 @@ async def _stop_data_cleanup_jobs() -> None:
     _data_cleanup_scheduler = None
 
 
-@app.on_startup
+# @app.on_startup
 async def _ensure_share_price_partitions() -> None:
     """Create any missing monthly partitions for t_share_price on startup."""
     from analyst.infrastructure.engine import EngineProvider
@@ -155,7 +155,7 @@ async def _ensure_share_price_partitions() -> None:
         await session.commit()
 
 
-@app.on_startup
+# @app.on_startup
 async def _ensure_news_partitions() -> None:
     """Create any missing yearly partitions for news tables on startup."""
     from analyst.infrastructure.engine import EngineProvider
