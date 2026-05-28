@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import TYPE_CHECKING, List, Optional, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from common.domain.news import NewsArticle
 
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from harvester.providers.alphavantage_provider import AlphaVantageProvider
 
 logger = logging.getLogger(__name__)
+
+NEWS_PUBLISH_BATCH_SIZE = 200
 
 
 class NewsService:
@@ -25,7 +27,8 @@ class NewsService:
 
     async def refresh_news(self, time_from: Optional[str] = None, time_to: Optional[str] = None) -> int:
         """
-        Fetches news from the provider, transforms it, and publishes it to Kafka.
+        Fetches news from the provider, transforms it, and publishes it to Kafka
+        in batches to avoid message size limits.
 
         Args:
             time_from: The start time for the news query (YYYYMMDDTHHMM).
@@ -43,15 +46,20 @@ class NewsService:
             return 0
 
         enriched_articles = self._enrich_and_validate(raw_data)
+        article_count = len(enriched_articles)
 
         if not enriched_articles:
             logger.info("No articles to publish after enrichment.")
             return 0
 
-        await self._publisher.publish(enriched_articles)
+        logger.info("Publishing %d articles in batches of %d...", article_count, NEWS_PUBLISH_BATCH_SIZE)
+        for i in range(0, article_count, NEWS_PUBLISH_BATCH_SIZE):
+            batch = enriched_articles[i: i + NEWS_PUBLISH_BATCH_SIZE]
+            await self._publisher.publish(batch)
+            logger.debug("Published batch of %d articles.", len(batch))
 
-        logger.info("Successfully published %d news articles.", len(enriched_articles))
-        return len(enriched_articles)
+        logger.info("Successfully published %d news articles.", article_count)
+        return article_count
 
     def _enrich_and_validate(self, raw_data: Dict[str, Any]) -> List[NewsArticle]:
         """
@@ -76,7 +84,7 @@ class NewsService:
                 article = NewsArticle.model_validate(raw_article)
                 enriched.append(article)
             except Exception as e:
-                 logger.error(f"Failed to validate article {raw_article.get('title')}: {e}")
+                logger.error(f"Failed to validate article {raw_article.get('title')}: {e}")
 
         return enriched
 
