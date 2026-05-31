@@ -18,19 +18,18 @@ from pydantic import ValidationError
 
 from common.config import config
 from common.domain.balance_sheet import BalanceSheet, BalanceSheetTemplate
+from common.domain.company import Company
 from common.domain.cash_flow_statement import (
     CashFlowStatement,
     CashFlowStatementTemplate,
 )
 from common.domain.income_statement import IncomeStatement, IncomeStatementTemplate
 from common.domain.share_price import SharePrice
-from common.domain.ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
-_PROVIDER_NAME = "simfin"
-_REQUIRED_TICKER_COLUMNS = ("Ticker", "Company Name")
-_REQUIRED_SHARE_PRICE_COLUMNS = ("Ticker", "Date", "Close")
+_REQUIRED_COMPANY_COLUMNS = ("Ticker", "Company Name", "SimFinId", "Currency")
+_REQUIRED_SHARE_PRICE_COLUMNS = ("Ticker", "SimFinId", "Date", "Close")
 _REQUIRED_STATEMENT_COLUMNS = (
     "Ticker",
     "SimFinId",
@@ -71,7 +70,7 @@ def _patch_pandas_for_simfin() -> None:
 class SimFinProvider:
     """Fetches data from SimFin.
 
-    Currently exposes `fetch_tickers`; future methods will add
+    Currently exposes `fetch_companies`; future methods will add
     statements and derived ratios.
     """
 
@@ -80,25 +79,25 @@ class SimFinProvider:
         self._configure_sdk(cache_path)
         self._industry_map: Dict[int, Dict[str, Any]] = {}
 
-    def fetch_tickers(self, market: str = "us") -> Iterator[Ticker]:
-        """Yield validated `Ticker` records for the given market."""
+    def fetch_companies(self, market: str = "us") -> Iterator[Company]:
+        """Yield validated ``Company`` records for the given market."""
         self._industry_map = self._load_industry_map()
         companies = self._load_companies(market)
         skipped_missing_required = 0
         skipped_invalid = 0
         published = 0
         for _, row in companies.iterrows():
-            if not self._has_required_ticker_fields(row):
+            if not self._has_required_company_fields(row):
                 skipped_missing_required += 1
                 continue
-            ticker = self._data_row_to_ticker(row)
-            if ticker is not None:
+            company = self._data_row_to_company(row, market)
+            if company is not None:
                 published += 1
-                yield ticker
+                yield company
                 continue
             skipped_invalid += 1
         logger.info(
-            "Ticker load summary market=%s published=%d skipped_missing_required=%d skipped_invalid=%d",
+            "Company load summary market=%s published=%d skipped_missing_required=%d skipped_invalid=%d",
             market,
             published,
             skipped_missing_required,
@@ -124,17 +123,17 @@ class SimFinProvider:
         # Added refresh_days parameter from config
         return sf.load_companies(market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
-    def _data_row_to_ticker(self, row: pd.Series) -> Optional[Ticker]:
+    def _data_row_to_company(self, row: pd.Series, market: str) -> Optional[Company]:
         symbol = row.get("Ticker", "Unknown")
         try:
-            return Ticker.model_validate(self._build_raw_payload(row))
+            return Company.model_validate(self._build_raw_payload(row, market))
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
-            logger.warning("Skipping ticker %s: %s", symbol, exc)
+            logger.warning("Skipping company %s: %s", symbol, exc)
             return None
 
     @classmethod
-    def _has_required_ticker_fields(cls, row: pd.Series) -> bool:
-        for column in _REQUIRED_TICKER_COLUMNS:
+    def _has_required_company_fields(cls, row: pd.Series) -> bool:
+        for column in _REQUIRED_COMPANY_COLUMNS:
             if cls._is_missing(row.get(column)):
                 return False
         return True
@@ -149,9 +148,9 @@ class SimFinProvider:
             return True
         return False
 
-    def _build_raw_payload(self, row: pd.Series) -> Dict[str, Any]:
+    def _build_raw_payload(self, row: pd.Series, market: str) -> Dict[str, Any]:
         raw: Dict[str, Any] = row.to_dict()
-        raw["provider_name"] = _PROVIDER_NAME
+        raw["market"] = market
         self._enrich_with_industry(raw)
         return raw
 
@@ -287,7 +286,13 @@ class SimFinProvider:
             if not self._has_required_statement_fields(row):
                 skipped_missing_required += 1
                 continue
-            statement = self._data_row_to_income(row, template, variant, extracted_at)
+            statement = self._data_row_to_income(
+                row,
+                template,
+                variant,
+                market,
+                extracted_at,
+            )
             if statement is not None:
                 published += 1
                 yield statement
@@ -320,6 +325,7 @@ class SimFinProvider:
         row: pd.Series,
         template: IncomeStatementTemplate,
         variant: str,
+        market: str,
         extracted_at: datetime,
     ) -> Optional[IncomeStatement]:
         symbol = row.get("Ticker", "Unknown")
@@ -328,6 +334,7 @@ class SimFinProvider:
             model_input = payload.copy()
             model_input["template"] = template
             model_input["variant"] = variant
+            model_input["market"] = market
             model_input["extracted_at"] = extracted_at
             model_input["payload"] = payload
             return IncomeStatement.model_validate(model_input)
@@ -355,6 +362,7 @@ class SimFinProvider:
                 row,
                 template,
                 variant,
+                market,
                 extracted_at,
             )
             if statement is not None:
@@ -389,6 +397,7 @@ class SimFinProvider:
         row: pd.Series,
         template: BalanceSheetTemplate,
         variant: str,
+        market: str,
         extracted_at: datetime,
     ) -> Optional[BalanceSheet]:
         symbol = row.get("Ticker", "Unknown")
@@ -397,6 +406,7 @@ class SimFinProvider:
             model_input = payload.copy()
             model_input["template"] = template
             model_input["variant"] = variant
+            model_input["market"] = market
             model_input["extracted_at"] = extracted_at
             model_input["payload"] = payload
             return BalanceSheet.model_validate(model_input)
@@ -429,6 +439,7 @@ class SimFinProvider:
                 row,
                 template,
                 variant,
+                market,
                 extracted_at,
             )
             if statement is not None:
@@ -463,6 +474,7 @@ class SimFinProvider:
         row: pd.Series,
         template: CashFlowStatementTemplate,
         variant: str,
+        market: str,
         extracted_at: datetime,
     ) -> Optional[CashFlowStatement]:
         symbol = row.get("Ticker", "Unknown")
@@ -471,6 +483,7 @@ class SimFinProvider:
             model_input = payload.copy()
             model_input["template"] = template
             model_input["variant"] = variant
+            model_input["market"] = market
             model_input["extracted_at"] = extracted_at
             model_input["payload"] = payload
             return CashFlowStatement.model_validate(model_input)

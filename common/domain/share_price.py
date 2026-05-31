@@ -18,8 +18,7 @@ class SharePrice(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    ticker: str = Field(alias="Ticker")
-    sim_fin_id: Optional[int] = Field(None, alias="SimFinId")
+    company_id: int = Field(alias="SimFinId")
     currency: Optional[str] = Field(None, alias="Currency")
     market: str
     trade_date: date = Field(alias="Date")
@@ -32,6 +31,8 @@ class SharePrice(BaseModel):
     shares_outstanding: Optional[int] = Field(None, alias="Shares Outstanding (Common)")
     dividend: Optional[float] = Field(None, alias="Dividend")
     extracted_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     @field_validator("*", mode="before")
     @classmethod

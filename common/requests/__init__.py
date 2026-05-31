@@ -9,9 +9,9 @@ from pydantic import Field
 from common.requests.balance_sheet import FetchBalanceSheetRequest
 from common.requests.base import Request
 from common.requests.cash_flow_statement import FetchCashFlowStatementRequest
+from common.requests.company import FetchCompanyRequest
 from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
-from common.requests.ticker import FetchTickerRequest
 from common.requests.fetch_market import FetchMarketRequest
 from common.requests.fetch_industry import FetchIndustryRequest
 from common.requests.analyze_ticker import AnalyzeTickerRequest
@@ -22,7 +22,7 @@ from common.requests.fetch_news import FetchNewsRequest
 # correctly deserializes the JSON payload into the matching model.
 AnyRequest = Annotated[
     Union[
-        FetchTickerRequest,
+        FetchCompanyRequest,
         FetchIncomeStatementRequest,
         FetchBalanceSheetRequest,
         FetchCashFlowStatementRequest,
@@ -39,9 +39,9 @@ __all__ = [
     "AnyRequest",
     "FetchBalanceSheetRequest",
     "FetchCashFlowStatementRequest",
+    "FetchCompanyRequest",
     "FetchIncomeStatementRequest",
     "FetchSharePriceRequest",
-    "FetchTickerRequest",
     "FetchMarketRequest",
     "FetchIndustryRequest",
     "AnalyzeTickerRequest",

@@ -1,3 +1,4 @@
+from common.domain.company import Company
 from common.domain.ticker import Ticker
 from common.domain.income_statement import IncomeStatement, IncomeStatementTemplate
 from common.domain.balance_sheet import BalanceSheet, BalanceSheetTemplate
@@ -12,6 +13,7 @@ __all__ = [
     "BalanceSheetTemplate",
     "CashFlowStatement",
     "CashFlowStatementTemplate",
+    "Company",
     "IncomeStatement",
     "IncomeStatementTemplate",
     "SharePrice",

@@ -19,7 +19,7 @@ class KafkaRequestPublisher:
     def __init__(self):
         self._topic_map = {
             # Harvester requests go to a single topic
-            "fetch_ticker": config.harvester_request_topic,
+            "fetch_company": config.harvester_request_topic,
             "fetch_statements": config.harvester_request_topic,
             "fetch_income_statement": config.harvester_request_topic,
             "fetch_balance_sheet": config.harvester_request_topic,

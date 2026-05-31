@@ -13,7 +13,7 @@ def _utcnow() -> datetime:
 
 
 DatasetType = Literal[
-    "ticker",
+    "company",
     "share_price",
     "balance_sheet",
     "income_statement",

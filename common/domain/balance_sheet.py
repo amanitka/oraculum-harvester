@@ -31,6 +31,10 @@ def _variant_from_fiscal_period(value: Any) -> StatementVariant:
     return "annual"
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class BalanceSheet(BaseModel):
     """Standardized balance sheet record for the Oraculum Harvester.
 
@@ -49,15 +53,17 @@ class BalanceSheet(BaseModel):
     variant: StatementVariant
 
     # Core identifiers (shared by all templates) -----------------------------
-    ticker: str = Field(alias="Ticker")
-    simfin_id: int = Field(alias="SimFinId")
+    company_id: int = Field(alias="SimFinId")
+    market: str
     currency: str = Field(alias="Currency")
     fiscal_year: int = Field(alias="Fiscal Year")
     fiscal_period: str = Field(alias="Fiscal Period")
     report_date: date = Field(alias="Report Date")
     publish_date: date = Field(alias="Publish Date")
     restated_date: date | None = Field(alias="Restated Date", default=None)
-    extracted_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    extracted_at: datetime = Field(default_factory=_utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)
 
     # Database-only field (populated from model_dump)
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -99,11 +105,9 @@ class BalanceSheet(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
-    def composite_key(self) -> str:
-        """Unique identifier for Kafka keys and the downstream ORM primary key.
+    def id(self) -> str:
+        """Generate the statement identifier for parquet and downstream storage.
 
-        Example: ``AAPL-2023-FY-general-annual``. Includes ``template`` and
-        ``variant`` so rows for the same ticker/period across schemas and
-        periodicities never collide.
+        Example: ``111052-2023-FY-annual``.
         """
-        return f"{self.ticker}-{self.fiscal_year}-{self.fiscal_period}-{self.template}-{self.variant}"
+        return f"{self.company_id}-{self.fiscal_year}-{self.fiscal_period}-{self.variant}"
