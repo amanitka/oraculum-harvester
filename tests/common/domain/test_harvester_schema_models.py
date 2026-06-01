@@ -31,6 +31,7 @@ def test_income_statement_id_uses_company_id_variant() -> None:
     statement = IncomeStatement.model_validate(
         {
             "SimFinId": 321,
+            "Ticker": "AAPL",
             "market": "us",
             "template": "general",
             "variant": "annual",
@@ -44,6 +45,7 @@ def test_income_statement_id_uses_company_id_variant() -> None:
     )
 
     assert statement.company_id == 321
+    assert statement.ticker == "AAPL"
     assert statement.id == "321-2024-FY-annual"
 
 
@@ -52,6 +54,7 @@ def test_balance_sheet_id_uses_company_id_variant() -> None:
     statement = BalanceSheet.model_validate(
         {
             "SimFinId": 654,
+            "Ticker": "JPM",
             "market": "us",
             "template": "banks",
             "variant": "quarterly",
@@ -65,6 +68,7 @@ def test_balance_sheet_id_uses_company_id_variant() -> None:
     )
 
     assert statement.company_id == 654
+    assert statement.ticker == "JPM"
     assert statement.id == "654-2024-Q1-quarterly"
 
 
@@ -73,6 +77,7 @@ def test_cash_flow_statement_id_uses_company_id_variant() -> None:
     statement = CashFlowStatement.model_validate(
         {
             "SimFinId": 987,
+            "Ticker": "ALL",
             "market": "us",
             "template": "insurance",
             "variant": "ttm",
@@ -86,6 +91,7 @@ def test_cash_flow_statement_id_uses_company_id_variant() -> None:
     )
 
     assert statement.company_id == 987
+    assert statement.ticker == "ALL"
     assert statement.id == "987-2024-Q4-ttm"
 
 
@@ -94,6 +100,7 @@ def test_share_price_maps_simfin_id_to_company_id() -> None:
     share_price = SharePrice.model_validate(
         {
             "SimFinId": 111,
+            "Ticker": "MSFT",
             "market": "us",
             "Currency": "USD",
             "Date": "2024-01-02",
@@ -102,3 +109,4 @@ def test_share_price_maps_simfin_id_to_company_id() -> None:
     )
 
     assert share_price.company_id == 111
+    assert share_price.ticker == "MSFT"

@@ -28,7 +28,10 @@ from common.domain.share_price import SharePrice
 
 logger = logging.getLogger(__name__)
 
-_REQUIRED_COMPANY_COLUMNS = ("Ticker", "Company Name", "SimFinId", "Currency")
+_COMPANY_TICKER_COLUMNS = ("Ticker", "index", "level_0", "Symbol", "symbol")
+_COMPANY_ID_COLUMNS = ("SimFinId", "level_1", "simfin_id", "SimFin ID")
+_COMPANY_CURRENCY_COLUMNS = ("Currency", "Price Currency", "currency")
+_DEFAULT_CURRENCY_BY_MARKET = {"us": "USD"}
 _REQUIRED_SHARE_PRICE_COLUMNS = ("Ticker", "SimFinId", "Date", "Close")
 _REQUIRED_STATEMENT_COLUMNS = (
     "Ticker",
@@ -124,7 +127,7 @@ class SimFinProvider:
         return sf.load_companies(market=market, refresh_days=config.simfin_refresh_days).reset_index()
 
     def _data_row_to_company(self, row: pd.Series, market: str) -> Optional[Company]:
-        symbol = row.get("Ticker", "Unknown")
+        symbol = self._first_present_value(row, _COMPANY_TICKER_COLUMNS) or "Unknown"
         try:
             return Company.model_validate(self._build_raw_payload(row, market))
         except Exception as exc:  # noqa: BLE001 - vendor rows vary a lot
@@ -133,10 +136,10 @@ class SimFinProvider:
 
     @classmethod
     def _has_required_company_fields(cls, row: pd.Series) -> bool:
-        for column in _REQUIRED_COMPANY_COLUMNS:
-            if cls._is_missing(row.get(column)):
-                return False
-        return True
+        ticker = cls._first_present_value(row, _COMPANY_TICKER_COLUMNS)
+        company_id = cls._first_present_value(row, _COMPANY_ID_COLUMNS)
+        company_name = row.get("Company Name")
+        return not (cls._is_missing(ticker) or cls._is_missing(company_id) or cls._is_missing(company_name))
 
     @staticmethod
     def _is_missing(value: Any) -> bool:
@@ -148,8 +151,27 @@ class SimFinProvider:
             return True
         return False
 
+    @classmethod
+    def _first_present_value(
+        cls,
+        payload: pd.Series | Dict[str, Any],
+        columns: tuple[str, ...],
+    ) -> Any:
+        for column in columns:
+            value = payload.get(column)
+            if not cls._is_missing(value):
+                return value
+        return None
+
     def _build_raw_payload(self, row: pd.Series, market: str) -> Dict[str, Any]:
         raw: Dict[str, Any] = row.to_dict()
+        raw["Ticker"] = self._first_present_value(raw, _COMPANY_TICKER_COLUMNS)
+        raw["SimFinId"] = self._first_present_value(raw, _COMPANY_ID_COLUMNS)
+        raw["Currency"] = self._first_present_value(raw, _COMPANY_CURRENCY_COLUMNS)
+        if self._is_missing(raw.get("Currency")):
+            fallback_currency = _DEFAULT_CURRENCY_BY_MARKET.get(market.lower())
+            if fallback_currency is not None:
+                raw["Currency"] = fallback_currency
         raw["market"] = market
         self._enrich_with_industry(raw)
         return raw

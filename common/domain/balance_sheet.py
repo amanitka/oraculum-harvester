@@ -54,6 +54,7 @@ class BalanceSheet(BaseModel):
 
     # Core identifiers (shared by all templates) -----------------------------
     company_id: int = Field(alias="SimFinId")
+    ticker: str = Field(alias="Ticker")
     market: str
     currency: str = Field(alias="Currency")
     fiscal_year: int = Field(alias="Fiscal Year")

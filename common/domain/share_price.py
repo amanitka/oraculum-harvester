@@ -19,6 +19,7 @@ class SharePrice(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     company_id: int = Field(alias="SimFinId")
+    ticker: str = Field(alias="Ticker")
     currency: Optional[str] = Field(None, alias="Currency")
     market: str
     trade_date: date = Field(alias="Date")

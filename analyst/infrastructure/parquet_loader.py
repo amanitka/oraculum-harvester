@@ -34,12 +34,25 @@ class ParquetLoader:
             return
 
         start_time = time.monotonic()
-        run_log = IngestionRunLogDB(
-            dataset=event.dataset,
-            run_id=event.run_id,
-            file_checksum=event.file_checksum,
-            status="RUNNING",
+        stmt = select(IngestionRunLogDB).where(
+            IngestionRunLogDB.dataset == event.dataset,
+            IngestionRunLogDB.run_id == event.run_id,
+            IngestionRunLogDB.file_checksum == event.file_checksum,
         )
+        result = await self._session.exec(stmt)
+        run_log = result.first()
+        if run_log:
+            run_log.status = "RUNNING"
+            run_log.loaded_rows = 0
+            run_log.merged_rows = 0
+            run_log.error_text = None
+        else:
+            run_log = IngestionRunLogDB(
+                dataset=event.dataset,
+                run_id=event.run_id,
+                file_checksum=event.file_checksum,
+                status="RUNNING",
+            )
         self._session.add(run_log)
         await self._session.commit()
         await self._session.refresh(run_log)
