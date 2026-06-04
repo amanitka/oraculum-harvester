@@ -8,6 +8,8 @@ import hashlib
 import logging
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from pydantic import ValidationError
+
 from common.domain.news import NewsArticle
 
 if TYPE_CHECKING:
@@ -54,7 +56,7 @@ class NewsService:
 
         logger.info("Publishing %d articles in batches of %d...", article_count, NEWS_PUBLISH_BATCH_SIZE)
         for i in range(0, article_count, NEWS_PUBLISH_BATCH_SIZE):
-            batch = enriched_articles[i: i + NEWS_PUBLISH_BATCH_SIZE]
+            batch = enriched_articles[i : i + NEWS_PUBLISH_BATCH_SIZE]
             await self._publisher.publish(batch)
             logger.debug("Published batch of %d articles.", len(batch))
 
@@ -72,19 +74,21 @@ class NewsService:
 
         enriched = []
         for raw_article in raw_feed:
+            article_payload = raw_article.copy()
+
             # Denormalize metadata for data lineage
-            raw_article["sentiment_score_definition"] = sentiment_def
-            raw_article["relevance_score_definition"] = relevance_def
+            article_payload["sentiment_score_definition"] = sentiment_def
+            article_payload["relevance_score_definition"] = relevance_def
 
             # Generate a deterministic, unique ID for idempotency
-            raw_article["id"] = self._generate_article_id(raw_article)
+            article_payload["id"] = self._generate_article_id(article_payload)
 
             # Now validate against the strict Pydantic model
             try:
-                article = NewsArticle.model_validate(raw_article)
+                article = NewsArticle.model_validate(article_payload)
                 enriched.append(article)
-            except Exception as e:
-                logger.error(f"Failed to validate article {raw_article.get('title')}: {e}")
+            except ValidationError as exc:
+                logger.error("Failed to validate article %s: %s", article_payload.get("title"), exc)
 
         return enriched
 

@@ -67,7 +67,7 @@ class BalanceSheet(BaseModel):
     updated_at: datetime = Field(default_factory=_utcnow)
 
     # Database-only field (populated from model_dump)
-    payload: dict[str, Any] = Field(default_factory=dict)
+    statement_data: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("*", mode="before")
     @classmethod

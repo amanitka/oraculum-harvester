@@ -358,7 +358,7 @@ class SimFinProvider:
             model_input["variant"] = variant
             model_input["market"] = market
             model_input["extracted_at"] = extracted_at
-            model_input["payload"] = payload
+            model_input["statement_data"] = payload
             return IncomeStatement.model_validate(model_input)
         except (ValidationError, TypeError) as exc:
             logger.warning("Skipping income row template=%s ticker=%s: %s", template, symbol, exc)
@@ -430,8 +430,8 @@ class SimFinProvider:
             model_input["variant"] = variant
             model_input["market"] = market
             model_input["extracted_at"] = extracted_at
-            model_input["payload"] = payload
-            return BalanceSheet.model_validate(model_input)
+            model_input["statement_data"] = payload
+            return BalanceSheet.model_.validate(model_input)
         except (ValidationError, TypeError) as exc:
             logger.warning(
                 "Skipping balance sheet row template=%s ticker=%s: %s",
@@ -507,7 +507,7 @@ class SimFinProvider:
             model_input["variant"] = variant
             model_input["market"] = market
             model_input["extracted_at"] = extracted_at
-            model_input["payload"] = payload
+            model_input["statement_data"] = payload
             return CashFlowStatement.model_validate(model_input)
         except (ValidationError, TypeError) as exc:
             logger.warning(
