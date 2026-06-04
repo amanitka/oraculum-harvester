@@ -57,22 +57,9 @@ class IndustryProvider:
                 "industryId": source_payload.get(SIMFIN_INDUSTRY_ID_KEY),
                 "sectorName": source_payload.get(SIMFIN_SECTOR_KEY),
                 "industryName": industry_name,
-                "statementTemplate": IndustryProvider._map_statement_template(industry_name),
                 "extractedAt": extracted_at,
             }
             return Industry.model_validate(payload)
         except Exception as exc:
             logger.warning(f"Skipping industry row {row.get(SIMFIN_INDUSTRY_ID_KEY, 'Unknown')}: {exc}")
             return None
-
-    @staticmethod
-    def _map_statement_template(industry_name: str | None) -> str:
-        """Map SimFin industry names to internal statement templates."""
-        if not industry_name:
-            return "general"
-        normalized_name = industry_name.lower()
-        if INDUSTRY_BANK_KEYWORD in normalized_name:
-            return "banks"
-        if INDUSTRY_INSURANCE_KEYWORD in normalized_name:
-            return "insurance"
-        return "general"
