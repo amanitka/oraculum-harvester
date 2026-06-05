@@ -194,7 +194,7 @@ class SimFinProvider:
             return None
         try:
             return int(float(value))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             return None
 
     def fetch_share_prices(
@@ -431,7 +431,7 @@ class SimFinProvider:
             model_input["market"] = market
             model_input["extracted_at"] = extracted_at
             model_input["statement_data"] = payload
-            return BalanceSheet.model_.validate(model_input)
+            return BalanceSheet.model_validate(model_input)
         except (ValidationError, TypeError) as exc:
             logger.warning(
                 "Skipping balance sheet row template=%s ticker=%s: %s",
