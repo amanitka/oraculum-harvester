@@ -13,12 +13,10 @@ class FetchSharePriceRequest(Request):
 
     ``from_date=None`` triggers a full historical load; setting it enables
     incremental ingestion.  The harvester filters to rows with
-    ``trade_date >= from_date - safety_window_days`` before publishing so
-    late-arriving corrections within the window are always re-ingested.
+    ``trade_date >= from_date``
     """
 
     request_type: Literal["fetch_share_price"] = "fetch_share_price"
     market: str = "us"
     variant: str = "daily"
     from_date: Optional[date] = None
-    safety_window_days: int = 7

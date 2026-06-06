@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
@@ -18,11 +18,11 @@ from pydantic import ValidationError
 
 from common.config import config
 from common.domain.balance_sheet import BalanceSheet, BalanceSheetTemplate
-from common.domain.company import Company
 from common.domain.cash_flow_statement import (
     CashFlowStatement,
     CashFlowStatementTemplate,
 )
+from common.domain.company import Company
 from common.domain.income_statement import IncomeStatement, IncomeStatementTemplate
 from common.domain.share_price import SharePrice
 
@@ -117,14 +117,26 @@ class SimFinProvider:
     @staticmethod
     def _load_industry_map() -> Dict[int, Dict[str, Any]]:
         logger.info("Loading industry metadata from SimFin")
-        # Added refresh_days parameter from config
-        return sf.load_industries(refresh_days=config.simfin_refresh_days).to_dict(orient="index")
+        from pandas.errors import EmptyDataError
+
+        try:
+            # Added refresh_days parameter from config
+            return sf.load_industries(refresh_days=config.simfin_refresh_days).to_dict(orient="index")
+        except EmptyDataError as exc:
+            logger.warning("Skipping empty industry dataset: %s", exc)
+            return {}
 
     @staticmethod
     def _load_companies(market: str) -> pd.DataFrame:
         logger.info("Loading companies for market=%s", market)
-        # Added refresh_days parameter from config
-        return sf.load_companies(market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        from pandas.errors import EmptyDataError
+
+        try:
+            # Added refresh_days parameter from config
+            return sf.load_companies(market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        except EmptyDataError as exc:
+            logger.warning("Skipping empty companies dataset for market=%s: %s", market, exc)
+            return pd.DataFrame()
 
     def _data_row_to_company(self, row: pd.Series, market: str) -> Optional[Company]:
         symbol = self._first_present_value(row, _COMPANY_TICKER_COLUMNS) or "Unknown"
@@ -194,16 +206,10 @@ class SimFinProvider:
             return None
         try:
             return int(float(value))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
-    def fetch_share_prices(
-        self,
-        market: str,
-        variant: str,
-        from_date: Optional[date],
-        safety_window_days: int,
-    ) -> Iterator[List[SharePrice]]:
+    def fetch_share_prices(self, market: str, variant: str, from_date: Optional[date]) -> Iterator[List[SharePrice]]:
         """Yield lists of validated ``SharePrice`` records for the given market and date range in chunks."""
         logger.info(
             "Loading share prices variant=%s market=%s from_date=%s",
@@ -216,11 +222,24 @@ class SimFinProvider:
         # The memory spike usually comes from millions of Python Pydantic objects,
         # not the raw Pandas DataFrame. We'll chunk the output yielding instead.
         # Added refresh_days parameter from config
-        df = sf.load_shareprices(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        from pandas.errors import EmptyDataError
+
+        try:
+            df = sf.load_shareprices(
+                variant=variant, market=market, refresh_days=config.simfin_refresh_days
+            ).reset_index()
+        except EmptyDataError as exc:
+            logger.warning("Skipping empty share prices dataset variant=%s market=%s: %s", variant, market, exc)
+            df = pd.DataFrame()
+
+        if df.empty:
+            return
 
         if from_date is not None:
             date_series = pd.to_datetime(df["Date"], errors="coerce")
-            cutoff = pd.Timestamp(from_date - timedelta(days=safety_window_days))
+            cutoff = pd.Timestamp(from_date)
+            if date_series.dt.tz is not None:
+                cutoff = cutoff.tz_localize(date_series.dt.tz)
             df = df[date_series >= cutoff]
 
         extracted_at = datetime.now(timezone.utc)
@@ -339,8 +358,20 @@ class SimFinProvider:
             variant,
             market,
         )
-        # Added refresh_days parameter from config
-        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        from pandas.errors import EmptyDataError
+
+        try:
+            # Added refresh_days parameter from config
+            return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        except EmptyDataError as exc:
+            logger.warning(
+                "Skipping empty income dataset template=%s variant=%s market=%s: %s",
+                template,
+                variant,
+                market,
+                exc,
+            )
+            return pd.DataFrame()
 
     @staticmethod
     def _data_row_to_income(
@@ -411,8 +442,20 @@ class SimFinProvider:
             variant,
             market,
         )
-        # Added refresh_days parameter from config
-        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        from pandas.errors import EmptyDataError
+
+        try:
+            # Added refresh_days parameter from config
+            return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        except EmptyDataError as exc:
+            logger.warning(
+                "Skipping empty balance sheet dataset template=%s variant=%s market=%s: %s",
+                template,
+                variant,
+                market,
+                exc,
+            )
+            return pd.DataFrame()
 
     @staticmethod
     def _data_row_to_balance_sheet(
@@ -488,8 +531,20 @@ class SimFinProvider:
             variant,
             market,
         )
-        # Added refresh_days parameter from config
-        return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        from pandas.errors import EmptyDataError
+
+        try:
+            # Added refresh_days parameter from config
+            return loader(variant=variant, market=market, refresh_days=config.simfin_refresh_days).reset_index()
+        except EmptyDataError as exc:
+            logger.warning(
+                "Skipping empty cash flow statement dataset template=%s variant=%s market=%s: %s",
+                template,
+                variant,
+                market,
+                exc,
+            )
+            return pd.DataFrame()
 
     @staticmethod
     def _data_row_to_cash_flow_statement(

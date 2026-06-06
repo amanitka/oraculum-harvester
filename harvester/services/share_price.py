@@ -26,10 +26,7 @@ class SharePriceService:
         from harvester import publishers
 
         chunk_generator = self._provider.fetch_share_prices(
-            market=request.market,
-            variant=request.variant,
-            from_date=request.from_date,
-            safety_window_days=request.safety_window_days,
+            market=request.market, variant=request.variant, from_date=request.from_date
         )
 
         def _get_next_chunk() -> Optional[List[SharePrice]]:

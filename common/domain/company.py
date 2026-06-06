@@ -28,7 +28,7 @@ class Company(BaseModel):
     isin: str | None = Field(default=None, alias="ISIN")
     description: str | None = Field(default=None, alias="Business Summary")
     employee_count: int | None = Field(default=None, alias="Number Employees")
-    currency: str = Field(alias="Currency")
+    currency: str | None = Field(default=None, alias="Currency")
     cik: str | None = Field(default=None, alias="CIK")
     extracted_at: datetime = Field(default_factory=_utcnow)
     created_at: datetime = Field(default_factory=_utcnow)
