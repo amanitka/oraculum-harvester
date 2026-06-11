@@ -29,6 +29,7 @@ def write_to_parquet(
     models: List[BaseModel],
     dataset: str,
     run_id: str,
+    market: str,
     template: str | None = None,
     variant: str | None = None,
     fiscal_year: int | None = None,
@@ -36,26 +37,20 @@ def write_to_parquet(
 ) -> dict[str, Any]:
     """Write a list of Pydantic models to a Parquet file and return metadata.
 
-    The path structure is:
-    {shared_folder}/{dataset}/template={template}/variant={variant}/year={fiscal_year}/run_id={run_id}/part-{part:03d}.parquet
+    All files are stored flatly in the harvester export folder.
     """
     if not models:
         return {"count": 0, "path": "", "checksum": ""}
 
-    base_dir = config.shared_folder_path / dataset
-
-    # Build partition path
-    if template:
-        base_dir = base_dir / f"template={template}"
-    if variant:
-        base_dir = base_dir / f"variant={variant}"
-    if fiscal_year is not None:
-        base_dir = base_dir / f"year={fiscal_year}"
-
-    target_dir = base_dir / f"run_id={run_id}"
+    target_dir = config.harvester_export_folder_path
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    filename = f"part-{part:03d}.parquet"
+    # Build unique filename
+    if dataset in ("balance_sheet", "income_statement", "cash_flow_statement"):
+        filename = f"{run_id}_{market}_{dataset}_{template or ''}_{variant or ''}_part-{part:03d}.parquet"
+    else:
+        filename = f"{run_id}_{market}_{dataset}_part-{part:03d}.parquet"
+
     tmp_path = target_dir / f"{filename}.tmp"
     final_path = target_dir / filename
 
@@ -76,6 +71,6 @@ def write_to_parquet(
 
     return {
         "count": len(df),
-        "path": str(final_path),
+        "path": filename,
         "checksum": checksum,
     }

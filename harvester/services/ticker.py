@@ -27,7 +27,7 @@ class TickerService:
 
         if companies:
             run_id = str(request.correlation_id)
-            meta = await asyncio.to_thread(write_to_parquet, models=companies, dataset="company", run_id=run_id)
+            meta = await asyncio.to_thread(write_to_parquet, models=companies, dataset="company", run_id=run_id, market=request.market)
 
             event = DataFileReadyEvent(
                 dataset="company",

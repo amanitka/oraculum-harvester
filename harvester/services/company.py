@@ -32,6 +32,7 @@ class CompanyService:
                 models=companies,
                 dataset="company",
                 run_id=run_id,
+                market=request.market,
             )
 
             event = DataFileReadyEvent(

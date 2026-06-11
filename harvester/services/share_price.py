@@ -52,6 +52,7 @@ class SharePriceService:
                 models=rows_chunk,
                 dataset="share_price",
                 run_id=run_id,
+                market=request.market,
                 part=part,
             )
 

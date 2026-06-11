@@ -43,6 +43,7 @@ class CashFlowStatementService:
                 models=rows,
                 dataset="cash_flow_statement",
                 run_id=run_id,
+                market=request.market,
                 template=template,
                 variant=request.variant,
             )

@@ -43,6 +43,7 @@ class BalanceSheetService:
                 models=rows,
                 dataset="balance_sheet",
                 run_id=run_id,
+                market=request.market,
                 template=template,
                 variant=request.variant,
             )

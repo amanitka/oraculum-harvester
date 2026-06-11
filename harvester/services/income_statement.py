@@ -43,6 +43,7 @@ class IncomeStatementService:
                 models=rows,
                 dataset="income_statement",
                 run_id=run_id,
+                market=request.market,
                 template=template,
                 variant=request.variant,
             )

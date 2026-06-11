@@ -10,79 +10,13 @@ alphaVantage:
 kafka:
   brokers: $ORACULUM_KAFKA_BROKERS
   topics:
-    ticker: oraculum.ticker
-    incomeStatement: oraculum.income_statement
-    balanceSheet: oraculum.balance_sheet
-    cashFlowStatement: oraculum.cash_flow_statement
-    sharePriceBatch: oraculum.share_price_batch
-    analystRequest: oraculum.analyst.request
     market: oraculum.market
     industry: oraculum.industry
-
-shared:
-  folderPath: $ORACULUM_SHARED_FOLDER_PATH|./data/shared
+    news: oraculum.news
+    dataFileReady: oraculum.data_file_ready
 
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request
   dataPath: $ORACULUM_HARVESTER_DATA_PATH|./data
-
-database:
-  url: $ORACULUM_DATABASE_URL|postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
-
-analyst:
-  consumerGroup: oraculum-analyst
-  refresh:
-    priceCron: "0 7 * * *"
-    fundamentalsCron: "0 0 * * 0"
-    tickerCron: "0 0 1 * *"
-  cleanup:
-    dataCleanupCron: "$ORACULUM_DATA_CLEANUP_CRON|0 3 * * *"
-    dataRetentionDays: $ORACULUM_DATA_RETENTION_DAYS|3
-
-llm:
-  # A list of all available model deployments.
-  # 'alias' groups them into tiers. 'order' defines failover priority within a tier.
-  deployments:
-    # --- Tier 1: Flash Models (for simple, high-volume tasks) ---
-    - alias: "flash-tier"
-      model: "gemini-2.5-flash-lite"
-      api_key: ${GEMINI_API_KEY}
-      api_base: "https://generativelanguage.googleapis.com/v1beta/"
-      order: 1 # Primary: Newest, agentic, and extremely cheap.
-    - alias: "flash-tier"
-      model: "gpt-4o-mini"
-      api_key: ${OPENAI_API_KEY}
-      api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: OpenAI's cost-effective model.
-
-    # --- Tier 2: Pro Models (for robust analysis) ---
-    - alias: "pro-tier"
-      model: "gemini-2.5-flash"
-      api_key: ${GEMINI_API_KEY}
-      api_base: "https://generativelanguage.googleapis.com/v1beta/"
-      order: 1 # Primary: Google's newest production model for agentic work.
-    - alias: "pro-tier"
-      model: "gpt-4o"
-      api_key: ${OPENAI_API_KEY}
-      api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: Powerful OpenAI model.
-
-    # --- Tier 3: Specialist Models (for critical synthesis) ---
-    - alias: "specialist-tier"
-      model: "gemini-3.1-pro-preview"
-      api_key: ${GEMINI_API_KEY}
-      api_base: "https://generativelanguage.googleapis.com/v1beta/"
-      order: 1 # Primary: Flagship model for the most complex tasks.
-    - alias: "specialist-tier"
-      model: "gpt-4o"
-      api_key: ${OPENAI_API_KEY}
-      api_base: "https://api.openai.com/v1"
-      order: 2 # Fallback: Cross-provider failover to a powerful OpenAI model.
-
-  # Global settings applied to all calls via the router
-  router_settings:
-    temperature: 0.0
-    num_retries: 3
-    workflow_token_budget: 100000
-    max_tokens: 8192
+  exportPath: $ORACULUM_HARVESTER_EXPORT_PATH|./data/harvester
