@@ -18,5 +18,5 @@ kafka:
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request
-  dataDirectory: $ORACULUM_HARVESTER_DATA_DIRECTORY|/app/harvester/data
+  dataDirectory: $ORACULUM_HARVESTER_DATA_DIRECTORY|/app/data
   exchangeDirectory: $ORACULUM_HARVESTER_EXCHANGE_DIRECTORY|/app/exchange
