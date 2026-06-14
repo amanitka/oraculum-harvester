@@ -10,13 +10,13 @@ alphaVantage:
 kafka:
   brokers: $ORACULUM_HARVESTER_KAFKA_BROKERS
   topics:
-    market: oraculum.market
-    industry: oraculum.industry
-    news: oraculum.news
-    dataFileReady: oraculum.data_file_ready
+    market: $ORACULUM_HARVESTER_KAFKA_TOPIC_MARKET|oraculum.market
+    industry: $ORACULUM_HARVESTER_KAFKA_TOPIC_INDUSTRY|oraculum.industry
+    news: $ORACULUM_HARVESTER_KAFKA_TOPIC_NEWS|oraculum.news
+    dataFileReady: $ORACULUM_HARVESTER_KAFKA_TOPIC_DATA_FILE_READY|oraculum.data_file_ready
 
 harvester:
-  consumerGroup: oraculum-harvester
-  requestTopic: oraculum.harvester.request
+  consumerGroup: $ORACULUM_HARVESTER_KAFKA_CONSUMER_GROUP|oraculum-harvester
+  requestTopic: $ORACULUM_HARVESTER_KAFKA_TOPIC_HARVESTER_REQUEST|oraculum.harvester.request
   dataDirectory: $ORACULUM_HARVESTER_DATA_DIRECTORY|/app/data
   exchangeDirectory: $ORACULUM_HARVESTER_EXCHANGE_DIRECTORY|/app/exchange
