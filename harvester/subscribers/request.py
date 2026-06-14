@@ -24,8 +24,6 @@ from common.requests import (
 )
 from harvester.app import broker
 from harvester.providers.simfin_provider import SimFinProvider
-from harvester.providers.market import MarketProvider
-from harvester.providers.industry import IndustryProvider
 from harvester.providers.alphavantage_provider import AlphaVantageProvider
 from harvester.services import (
     BalanceSheetService,
@@ -48,8 +46,8 @@ _balance_service = BalanceSheetService(_provider)
 _cash_flow_service = CashFlowStatementService(_provider)
 _share_price_service = SharePriceService(_provider)
 
-_market_service = MarketService(MarketProvider())
-_industry_service = IndustryService(IndustryProvider())
+_market_service = MarketService(_provider)
+_industry_service = IndustryService(_provider)
 
 _news_service = NewsService(AlphaVantageProvider(), publishers.news_articles)
 

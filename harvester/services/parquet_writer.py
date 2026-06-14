@@ -42,7 +42,7 @@ def write_to_parquet(
     if not models:
         return {"count": 0, "path": "", "checksum": ""}
 
-    target_dir = config.harvester_export_folder_path
+    target_dir = config.harvester_exchange_directory
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # Build unique filename

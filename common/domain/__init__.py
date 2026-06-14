@@ -9,6 +9,8 @@ from common.domain.cash_flow_statement import (
 )
 from common.domain.share_price import SharePrice, SharePriceBatch
 from common.domain.news import NewsArticle, NewsFeed, NewsTickerSentiment, TopicRelevance
+from common.domain.industry import Industry
+from common.domain.market import Market
 
 __all__ = [
     "BalanceSheet",
@@ -26,4 +28,6 @@ __all__ = [
     "NewsFeed",
     "NewsTickerSentiment",
     "TopicRelevance",
+    "Industry",
+    "Market",
 ]

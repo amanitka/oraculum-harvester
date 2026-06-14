@@ -213,3 +213,4 @@ _*.py
 !__init__.py
 
 data/
+exchange/

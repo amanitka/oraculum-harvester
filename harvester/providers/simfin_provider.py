@@ -24,6 +24,8 @@ from common.domain.cash_flow_statement import (
 )
 from common.domain.company import Company
 from common.domain.income_statement import IncomeStatement, IncomeStatementTemplate
+from common.domain.industry import Industry
+from common.domain.market import Market
 from common.domain.share_price import SharePrice
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,12 @@ _REQUIRED_STATEMENT_COLUMNS = (
     "Report Date",
     "Publish Date",
 )
+_SIMFIN_INDUSTRY_ID_KEY = "IndustryId"
+_SIMFIN_SECTOR_KEY = "Sector"
+_SIMFIN_INDUSTRY_NAME_KEY = "Industry"
+_SIMFIN_MARKET_ID_KEY = "MarketId"
+_SIMFIN_MARKET_NAME_KEY = "Market Name"
+_SIMFIN_CURRENCY_KEY = "Currency"
 _INCOME_LOADERS: dict[IncomeStatementTemplate, Callable[..., pd.DataFrame]] = {
     "banks": sf.load_income_banks,
     "insurance": sf.load_income_insurance,
@@ -78,7 +86,7 @@ class SimFinProvider:
     """
 
     def __init__(self) -> None:
-        cache_path = config.harvester_data_path / "simfin_cache"
+        cache_path = config.harvester_data_directory / "simfin"
         self._configure_sdk(cache_path)
         self._industry_map: Dict[int, Dict[str, Any]] = {}
 
@@ -106,6 +114,85 @@ class SimFinProvider:
             skipped_missing_required,
             skipped_invalid,
         )
+
+    def fetch_industries(self) -> Iterator[Industry]:
+        """Yield validated `Industry` records."""
+        logger.info("Loading industries from SimFin")
+        df = sf.load_industries(refresh_days=config.simfin_refresh_days).reset_index()
+        extracted_at = datetime.now(timezone.utc)
+
+        published = 0
+        skipped = 0
+
+        for _, row in df.iterrows():
+            industry = self._data_row_to_industry(row, extracted_at)
+            if industry:
+                published += 1
+                yield industry
+            else:
+                skipped += 1
+
+        logger.info("Industry load summary: published=%d skipped=%d", published, skipped)
+
+    @staticmethod
+    def _data_row_to_industry(row: pd.Series, extracted_at: datetime) -> Industry | None:
+        """Convert a data row to an Industry record."""
+        try:
+            source_payload = row.to_dict()
+            industry_name = source_payload.get(_SIMFIN_INDUSTRY_NAME_KEY)
+            payload = {
+                "industryId": source_payload.get(_SIMFIN_INDUSTRY_ID_KEY),
+                "sectorName": source_payload.get(_SIMFIN_SECTOR_KEY),
+                "industryName": industry_name,
+                "extractedAt": extracted_at,
+            }
+            return Industry.model_validate(payload)
+        except Exception as exc:
+            logger.warning(
+                "Skipping industry row %s: %s",
+                row.get(_SIMFIN_INDUSTRY_ID_KEY, "Unknown"),
+                exc,
+            )
+            return None
+
+    def fetch_markets(self) -> Iterator[Market]:
+        """Yield validated `Market` records."""
+        logger.info("Loading markets from SimFin")
+        df = sf.load_markets(refresh_days=config.simfin_refresh_days).reset_index()
+        extracted_at = datetime.now(timezone.utc)
+
+        published = 0
+        skipped = 0
+
+        for _, row in df.iterrows():
+            market = self._data_row_to_market(row, extracted_at)
+            if market:
+                published += 1
+                yield market
+            else:
+                skipped += 1
+
+        logger.info("Market load summary: published=%d skipped=%d", published, skipped)
+
+    @staticmethod
+    def _data_row_to_market(row: pd.Series, extracted_at: datetime) -> Market | None:
+        """Convert a data row to a Market record."""
+        try:
+            source_payload = row.to_dict()
+            payload = {
+                "marketId": source_payload.get(_SIMFIN_MARKET_ID_KEY),
+                "marketName": source_payload.get(_SIMFIN_MARKET_NAME_KEY),
+                "currency": source_payload.get(_SIMFIN_CURRENCY_KEY),
+                "extractedAt": extracted_at,
+            }
+            return Market.model_validate(payload)
+        except Exception as exc:
+            logger.warning(
+                "Skipping market row %s: %s",
+                row.get(_SIMFIN_MARKET_ID_KEY, "Unknown"),
+                exc,
+            )
+            return None
 
     @staticmethod
     def _configure_sdk(cache_dir: Path) -> None:

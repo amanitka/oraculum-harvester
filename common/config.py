@@ -13,7 +13,6 @@ CONFIG_PATH = _ROOT_DIR / "config.yaml"
 ENV_PATH = _ROOT_DIR / ".env"
 
 
-
 class _KafkaTopicsConfig:
     """Canonical output topic names."""
 
@@ -44,13 +43,13 @@ class Config:
 
         # Resolve data paths relative to the project root to avoid issues when
         # starting services from different working directories.
-        raw_data_path = source.get("harvester.dataPath", "./data/simfin")
-        self.harvester_data_path: Path = _ROOT_DIR / Path(raw_data_path)
+        raw_data_path = source.get("harvester.dataDirectory", "./data")
+        self.harvester_data_directory: Path = _ROOT_DIR / Path(raw_data_path)
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
 
-        raw_export_path = source.get("harvester.exportPath", "./data/export")
-        self.harvester_export_folder_path: Path = _ROOT_DIR / Path(raw_export_path)
-        self.harvester_export_folder_path.mkdir(parents=True, exist_ok=True)
+        raw_exchange_path = source.get("harvester.exchangeDirectory", "./export")
+        self.harvester_exchange_directory: Path = _ROOT_DIR / Path(raw_exchange_path)
+        self.harvester_exchange_directory.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _parse_brokers(value: str | list[str] | None) -> List[str]:

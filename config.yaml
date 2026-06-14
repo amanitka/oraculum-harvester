@@ -1,14 +1,14 @@
 simfin:
-  apiKey: $ORACULUM_SIMFIN_API_KEY
-  chunkSize: $ORACULUM_SIMFIN_CHUNK_SIZE|500000
-  refreshDays: $ORACULUM_SIMFIN_REFRESH_DAYS|1
+  apiKey: $ORACULUM_HARVESTER_SIMFIN_API_KEY
+  chunkSize: $ORACULUM_HARVESTER_SIMFIN_CHUNK_SIZE|500000
+  refreshDays: $ORACULUM_HARVESTER_SIMFIN_REFRESH_DAYS|1
 
 alphaVantage:
   apiUrl: https://www.alphavantage.co
-  apiKey: $ORACULUM_ALPHA_VANTAGE_API_KEY
+  apiKey: $ORACULUM_HARVESTER_ALPHA_VANTAGE_API_KEY
 
 kafka:
-  brokers: $ORACULUM_KAFKA_BROKERS
+  brokers: $ORACULUM_HARVESTER_KAFKA_BROKERS
   topics:
     market: oraculum.market
     industry: oraculum.industry
@@ -18,5 +18,5 @@ kafka:
 harvester:
   consumerGroup: oraculum-harvester
   requestTopic: oraculum.harvester.request
-  dataPath: $ORACULUM_HARVESTER_DATA_PATH|./data
-  exportPath: $ORACULUM_HARVESTER_EXPORT_PATH|./data/harvester
+  dataDirectory: $ORACULUM_HARVESTER_DATA_DIRECTORY|/app/data
+  exchangeDirectory: $ORACULUM_HARVESTER_EXCHANGE_DIRECTORY|/app/exchange

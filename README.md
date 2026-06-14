@@ -38,14 +38,14 @@ Two services:
 Copy `.env.example` to `.env` and set the following variables:
 
 ```dotenv
-ORACULUM_SIMFIN_API_KEY=your_simfin_key
-ORACULUM_KAFKA_BROKERS=localhost:9092
-ORACULUM_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/oraculum
-ORACULUM_HARVESTER_DATA_PATH=./data
+ORACULUM_HARVESTER_SIMFIN_API_KEY=your_simfin_key
+ORACULUM_HARVESTER_KAFKA_BROKERS=localhost:9092
+ORACULUM_HARVESTER_DATA_DIRECTORY=./data
+ORACULUM_HARVESTER_EXCHANGE_DIRECTORY=./export
 ```
 
 All defaults in `config.yaml` work for local development without a `.env` file,
-except `ORACULUM_SIMFIN_API_KEY` which is always required.
+except `ORACULUM_HARVESTER_SIMFIN_API_KEY` which is always required.
 
 ---
 

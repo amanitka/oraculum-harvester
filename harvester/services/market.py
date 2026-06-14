@@ -3,13 +3,13 @@ import logging
 from common.config import config
 from common.requests.fetch_market import FetchMarketRequest
 from harvester.app import broker
-from harvester.providers.market import MarketProvider
+from harvester.providers.simfin_provider import SimFinProvider
 
 logger = logging.getLogger(__name__)
 
 
 class MarketService:
-    def __init__(self, provider: MarketProvider) -> None:
+    def __init__(self, provider: SimFinProvider) -> None:
         self._provider = provider
 
     async def fetch_and_publish(self, request: FetchMarketRequest) -> None:
