@@ -41,14 +41,15 @@ class Config:
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
 
-        # Resolve data paths relative to the project root to avoid issues when
-        # starting services from different working directories.
-        raw_data_path = source.get("harvester.dataDirectory", "./data")
-        self.harvester_data_directory: Path = _ROOT_DIR / Path(raw_data_path)
+        # Resolve data paths (handles absolute paths for Docker and relative paths for dev).
+        raw_data_path = source.get("harvester.dataDirectory")
+        parsed_data_path = Path(raw_data_path)
+        self.harvester_data_directory: Path = parsed_data_path if parsed_data_path.is_absolute() else _ROOT_DIR / parsed_data_path
         self.topics: _KafkaTopicsConfig = _KafkaTopicsConfig(source)
 
-        raw_exchange_path = source.get("harvester.exchangeDirectory", "./export")
-        self.harvester_exchange_directory: Path = _ROOT_DIR / Path(raw_exchange_path)
+        raw_exchange_path = source.get("harvester.exchangeDirectory")
+        parsed_exchange_path = Path(raw_exchange_path)
+        self.harvester_exchange_directory: Path = parsed_exchange_path if parsed_exchange_path.is_absolute() else _ROOT_DIR / parsed_exchange_path
         self.harvester_exchange_directory.mkdir(parents=True, exist_ok=True)
 
     @staticmethod

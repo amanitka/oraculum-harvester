@@ -47,8 +47,11 @@ ORACULUM_HARVESTER_SIMFIN_API_KEY=your_simfin_key
 ORACULUM_HARVESTER_ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
 ORACULUM_HARVESTER_KAFKA_BROKERS=localhost:9092
 ORACULUM_HARVESTER_DATA_DIRECTORY=./data
-ORACULUM_HARVESTER_EXCHANGE_DIRECTORY=./export
+ORACULUM_HARVESTER_EXCHANGE_DIRECTORY=./exchange
 ```
+
+*Note: In Docker or production environments, these can be set to absolute paths (such as `/app/data` and `/app/exchange`).*
+
 
 All defaults in `config.yaml` work for local development without a `.env` file, except `ORACULUM_HARVESTER_SIMFIN_API_KEY` which is always required.
 
