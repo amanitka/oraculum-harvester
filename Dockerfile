@@ -30,12 +30,13 @@ COPY . /app
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 
-# Create a non-root user and set permissions for data directories
-RUN useradd -u 10001 -m appuser && \
+# Create a non-root user and group with ID 10000 and set permissions for data directories
+RUN groupadd -g 10000 appgroup && \
+    useradd -u 10000 -g appgroup -m appuser && \
     mkdir -p /app/data && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appgroup /app
 
-USER appuser
+USER 10000:10000
 
 # Set working directory
 WORKDIR /app

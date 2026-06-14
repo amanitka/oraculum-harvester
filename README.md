@@ -1,193 +1,135 @@
-# Oraculum
+# Oraculum Harvester
 
-Event-driven financial data pipeline built with FastStream (Kafka), SimFin,
-SQLModel, and PostgreSQL.
+Event-driven financial data harvester built with FastStream (Kafka), Python, and the SimFin SDK.
 
 ---
 
 ## Architecture
 
+The Harvester service runs as a background worker consuming ingestion requests from Kafka, retrieving the datasets from external APIs, writing large datasets locally as Parquet files, and publishing events back to Kafka.
+
 ```
 FetchXxxRequest → [Kafka: oraculum.harvester.request]
     → harvester (SimFin fetch + publish)
-        → [Kafka: oraculum.ticker / oraculum.share_price_batch / ...]
-            → analyst (persist to PostgreSQL)
+        ├── [Local Storage: /data/export/*.parquet]
+        ├── [Kafka: oraculum.data_file_ready] (DataFileReadyEvent)
+        ├── [Kafka: oraculum.industry / oraculum.market] (Small metadata records)
+        └── [Kafka: oraculum.news] (NewsArticle list)
 ```
 
-Two services:
+### Ingestion Flow Details
 
-- **harvester** — consumes fetch requests, pulls data from SimFin, publishes domain events.
-- **analyst** — consumes domain events, persists them to PostgreSQL, and runs APScheduler jobs that publish periodic
-  refresh requests to Kafka.
+- **Large Datasets** (Companies, Share Prices, Income Statements, Balance Sheets, Cash Flow Statements):
+  Fetched from SimFin, written locally to a Parquet file inside the configured exchange directory, and a `DataFileReadyEvent` is published to `oraculum.data_file_ready`.
+- **Static Metadata** (Industries, Markets):
+  Fetched from SimFin and published directly to their respective Kafka topics (`oraculum.industry` and `oraculum.market`).
+- **News Feed**:
+  Fetched from Alpha Vantage and published as a list of `NewsArticle` records to `oraculum.news`.
 
 ---
 
 ## Prerequisites
 
-| Tool            | Purpose                  |
-|-----------------|--------------------------|
-| Python ≥ 3.14   | Runtime                  |
-| `uv`            | Package manager / runner |
-| PostgreSQL ≥ 14 | Database                 |
-| Kafka ≥ 3.x     | Message broker           |
+| Tool          | Purpose                  |
+|---------------|--------------------------|
+| Python ≥ 3.14 | Runtime environment      |
+| `uv`          | Package manager & runner |
+| Kafka ≥ 3.x   | Message broker           |
 
 ---
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set the following variables:
+Configuration is loaded from `config.yaml` and `.env` (using `envyaml`). Set the following environment variables:
 
 ```dotenv
 ORACULUM_HARVESTER_SIMFIN_API_KEY=your_simfin_key
+ORACULUM_HARVESTER_ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
 ORACULUM_HARVESTER_KAFKA_BROKERS=localhost:9092
 ORACULUM_HARVESTER_DATA_DIRECTORY=./data
 ORACULUM_HARVESTER_EXCHANGE_DIRECTORY=./export
 ```
 
-All defaults in `config.yaml` work for local development without a `.env` file,
-except `ORACULUM_HARVESTER_SIMFIN_API_KEY` which is always required.
+All defaults in `config.yaml` work for local development without a `.env` file, except `ORACULUM_HARVESTER_SIMFIN_API_KEY` which is always required.
 
 ---
 
-## Database setup
+## Running the Service
+
+Start the harvester background consumer using `uv`:
 
 ```powershell
-# Apply all migrations (creates t_ticker, t_share_price, statement tables, etc.)
-uv run alembic upgrade head
-```
-
-`t_share_price` is a PostgreSQL range-partitioned table (by `trade_date`).
-Monthly partitions from **1990-01** through the current month **+9 months**
-are created automatically every time the analyst service starts.
-
-Fundamentals statement tables (`t_income_statement`, `t_balance_sheet`,
-`t_cash_flow_statement`) persist a `variant` discriminator (`annual`,
-`quarterly`, `ttm`) and include it in `composite_key`.
-
----
-
-## Running the services
-
-```powershell
-# One command — analyst (consumer + scheduler) + Streamlit UI
-uv run python scripts/run_ops_stack.py
-
-# Or run separately:
-# Terminal 1 — analyst (consumer + DB writer)
-uv run python -m analyst
-
-# Terminal 2 — harvester (producer)
 uv run python -m harvester
-
-# Terminal 3 — Streamlit operations UI
-uv run streamlit run ui/ui.py
 ```
 
 ---
 
-## Operations UI
+## Triggering Data Ingestion
 
-The Streamlit UI currently provides an operations console with a dedicated
-`Refresh` tab. Each form publishes one request message to
-`oraculum.harvester.request` and shows the request `correlation_id` so runs are
-traceable in logs.
+Ingestion is triggered by sending a request message to the `oraculum.harvester.request` topic.
 
-Available refresh forms:
+### Request Payload Structures
 
-- Ticker refresh
-- Share-price refresh
-- Income statement refresh
-- Balance sheet refresh
-- Cash-flow statement refresh
+Requests are represented as Pydantic models with a required `request_type` discriminator. Below are some examples:
+
+#### 1. Company Metadata Ingestion
+```json
+{
+  "request_type": "fetch_company",
+  "correlation_id": "uuid-v4-string",
+  "market": "us"
+}
+```
+
+#### 2. Share Prices Ingestion (Incremental)
+```json
+{
+  "request_type": "fetch_share_price",
+  "correlation_id": "uuid-v4-string",
+  "market": "us",
+  "variant": "daily",
+  "from_date": "2026-01-01"
+}
+```
+
+#### 3. Financial Statements (Income, Balance Sheet, Cash Flow)
+```json
+{
+  "request_type": "fetch_income_statement",
+  "correlation_id": "uuid-v4-string",
+  "market": "us",
+  "template": "general",
+  "variant": "quarterly"
+}
+```
+*Note: Valid variants include `annual`, `quarterly`, and `ttm`. Valid templates include `general`, `banks`, and `insurance`.*
+
+#### 4. Markets & Industries
+```json
+{
+  "request_type": "fetch_market",
+  "correlation_id": "uuid-v4-string"
+}
+```
+```json
+{
+  "request_type": "fetch_industry",
+  "correlation_id": "uuid-v4-string"
+}
+```
 
 ---
 
-## Running an analysis
+## Development & Code Quality
 
-You can trigger a full fundamental, cash flow, risk, and valuation multi-agent
-analysis for a given ticker from the UI.
-
-1. Navigate to the **Analysis** tab in the Streamlit UI.
-2. Under the **Run analysis** sub-tab, enter a ticker (e.g., `AAPL`) and market (`us`).
-3. Click "Analyze". This publishes an `AnalyzeTickerRequest` to Kafka.
-4. Switch to the **Analyses** sub-tab to see the run status progress from `pending` -> `running` -> `completed`.
-5. Once complete, click the row to read the final Markdown report and structured verdict generated by the LLM team.
-
-> Ensure you have configured the `llm` block in `config.yaml` and provided the necessary provider API keys via `.env`.
-
----
-
-## Triggering data ingestion
-
-Send a fetch request to the harvester request topic. Example helper scripts
-live in the repo root as `_send_fetch_*.py`.
-
-### Tickers
+Maintain codebase standards using the following commands:
 
 ```powershell
-uv run python _send_fetch_ticker.py
-```
-
-### Share prices — incremental (Kafka flow)
-
-The incremental flow sends a `FetchSharePriceRequest` to the harvester. The
-harvester loads SimFin data, filters to `trade_date >= from_date - safety_window_days`,
-chunks rows into batches of 500, and publishes them to the
-`oraculum.share_price_batch` topic. The analyst consumes each batch and
-bulk-upserts it into `t_share_price`.
-
-```python
-from datetime import date
-from common.requests.share_price import FetchSharePriceRequest
-# publish FetchSharePriceRequest(market="us", from_date=date(2024, 1, 1))
-```
-
-### Share prices — initial bulk load (direct DB, bypasses Kafka)
-
-For the **first-ever load** of 6 M+ historical rows use the bulk script:
-
-```powershell
-# Ensure alembic upgrade head has been run first
-uv run python scripts/load_share_prices_initial.py --market us --variant daily
-```
-
-The script:
-
-1. Loads all SimFin share price data from the local cache.
-2. Creates any missing monthly partitions (1990-01 → now + 9 months).
-3. COPYs rows in chunks of 50 000 into a temporary staging table.
-4. Upserts from staging into `t_share_price` using `ON CONFLICT DO UPDATE`.
-
-The analyst fundamentals refresh job publishes requests for all statement
-variants (`annual`, `quarterly`, and `ttm`) per market.
-
-Re-running is safe — all rows are idempotent on `(ticker, market, trade_date)`.
-
----
-
-## Database object naming conventions
-
-| Prefix | Object type        |
-|--------|--------------------|
-| `t_`   | Tables             |
-| `v_`   | Views              |
-| `pk_`  | Primary keys       |
-| `fk_`  | Foreign keys       |
-| `uq_`  | Unique constraints |
-| `ix_`  | Indexes            |
-| `ck_`  | Check constraints  |
-
----
-
-## Development
-
-```powershell
-# Lint + format
+# Lint and auto-fix issues
 uv run ruff check --fix .
-uv run ruff format .
 
-# Type-check
-uv run mypy --strict common/ analyst/ harvester/
+# Format code
+uv run ruff format .
 
 # Compile-check a file
 uv run python -m py_compile path/to/file.py
