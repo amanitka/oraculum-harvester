@@ -13,8 +13,7 @@ FetchXxxRequest → [Kafka: oraculum.harvester.request]
     → harvester (SimFin fetch + publish)
         ├── [Local Storage: /data/export/*.parquet]
         ├── [Kafka: oraculum.data_file_ready] (DataFileReadyEvent)
-        ├── [Kafka: oraculum.industry / oraculum.market] (Small metadata records)
-        └── [Kafka: oraculum.news] (NewsArticle list)
+        └── [Kafka: oraculum.industry / oraculum.market] (Small metadata records)
 ```
 
 ### Ingestion Flow Details
@@ -23,8 +22,6 @@ FetchXxxRequest → [Kafka: oraculum.harvester.request]
   Fetched from SimFin, written locally to a Parquet file inside the configured exchange directory, and a `DataFileReadyEvent` is published to `oraculum.data_file_ready`.
 - **Static Metadata** (Industries, Markets):
   Fetched from SimFin and published directly to their respective Kafka topics (`oraculum.industry` and `oraculum.market`).
-- **News Feed**:
-  Fetched from Alpha Vantage and published as a list of `NewsArticle` records to `oraculum.news`.
 
 ---
 
@@ -44,7 +41,6 @@ Configuration is loaded from `config.yaml` and `.env` (using `envyaml`). Set the
 
 ```dotenv
 ORACULUM_HARVESTER_SIMFIN_API_KEY=your_simfin_key
-ORACULUM_HARVESTER_ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key
 ORACULUM_HARVESTER_KAFKA_BROKERS=localhost:9092
 ORACULUM_HARVESTER_DATA_DIRECTORY=./data
 ORACULUM_HARVESTER_EXCHANGE_DIRECTORY=./exchange

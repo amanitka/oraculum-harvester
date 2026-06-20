@@ -8,7 +8,6 @@ from common.domain.cash_flow_statement import (
     CashFlowStatementTemplate,
 )
 from common.domain.share_price import SharePrice, SharePriceBatch
-from common.domain.news import NewsArticle, NewsFeed, NewsTickerSentiment, TopicRelevance
 from common.domain.industry import Industry
 from common.domain.market import Market
 
@@ -24,10 +23,6 @@ __all__ = [
     "Company",
     "Ticker",
     "DataFileReadyEvent",
-    "NewsArticle",
-    "NewsFeed",
-    "NewsTickerSentiment",
-    "TopicRelevance",
     "Industry",
     "Market",
 ]
