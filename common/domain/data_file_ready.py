@@ -18,6 +18,7 @@ DatasetType = Literal[
     "balance_sheet",
     "income_statement",
     "cash_flow_statement",
+    "insider_transaction",
 ]
 
 
@@ -26,7 +27,7 @@ class DataFileReadyEvent(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    event_type: Literal["simfin.data_file_ready"] = "simfin.data_file_ready"
+    event_type: str = "oraculum.data_file_ready"
     dataset: DatasetType
     path: str
     template: Optional[str] = None

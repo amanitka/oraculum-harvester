@@ -33,13 +33,13 @@ class InsiderTransactionService:
             meta = await asyncio.to_thread(
                 write_to_parquet,
                 models=transactions,
-                dataset="insider_transaction_ticker",
+                dataset="insider_transaction",
                 run_id=run_id,
                 market="us",  # OpenInsider is US only
             )
 
             event = DataFileReadyEvent(
-                dataset="insider_transaction_ticker",
+                dataset="insider_transaction",
                 path=meta["path"],
                 run_id=run_id,
                 file_checksum=meta["checksum"],

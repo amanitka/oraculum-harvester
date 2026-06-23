@@ -13,7 +13,7 @@ class InsiderTransaction(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str
-    transaction_date: datetime | None = Field(default=None, alias="transaction_date")
+    trade_date: datetime | None = Field(default=None, alias="trade_date")
     filing_date: datetime
     ticker: str
     insider_name: str

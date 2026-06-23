@@ -102,7 +102,7 @@ class OpenInsiderProvider:
             
             # Clean transaction_date
             if "trade_date" in df.columns:
-                df["transaction_date"] = pd.to_datetime(df["trade_date"], errors="coerce")
+                df["trade_date"] = pd.to_datetime(df["trade_date"], errors="coerce")
                 
             # Generate ID
             df["id"] = df.apply(self._generate_id, axis=1)
