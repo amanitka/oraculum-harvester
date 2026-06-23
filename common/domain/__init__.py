@@ -10,6 +10,7 @@ from common.domain.cash_flow_statement import (
 from common.domain.share_price import SharePrice, SharePriceBatch
 from common.domain.industry import Industry
 from common.domain.market import Market
+from common.domain.insider_transaction import InsiderTransaction
 
 __all__ = [
     "BalanceSheet",
@@ -25,4 +26,5 @@ __all__ = [
     "DataFileReadyEvent",
     "Industry",
     "Market",
+    "InsiderTransaction",
 ]

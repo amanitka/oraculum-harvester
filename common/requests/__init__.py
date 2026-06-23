@@ -14,6 +14,7 @@ from common.requests.income_statement import FetchIncomeStatementRequest
 from common.requests.share_price import FetchSharePriceRequest
 from common.requests.fetch_market import FetchMarketRequest
 from common.requests.fetch_industry import FetchIndustryRequest
+from common.requests.insider_transaction import FetchInsiderTransactionsRequest
 
 # Discriminated union of all possible refresh requests.
 # Adding a new command means adding it to this tuple so FastStream
@@ -27,6 +28,7 @@ AnyRequest = Annotated[
         FetchSharePriceRequest,
         FetchMarketRequest,
         FetchIndustryRequest,
+        FetchInsiderTransactionsRequest,
     ],
     Field(discriminator="request_type"),
 ]
@@ -40,5 +42,6 @@ __all__ = [
     "FetchSharePriceRequest",
     "FetchMarketRequest",
     "FetchIndustryRequest",
+    "FetchInsiderTransactionsRequest",
     "Request",
 ]

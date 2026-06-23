@@ -20,15 +20,18 @@ from common.requests import (
     FetchSharePriceRequest,
     FetchMarketRequest,
     FetchIndustryRequest,
+    FetchInsiderTransactionsRequest,
 )
 from harvester.app import broker
 from harvester.providers.simfin_provider import SimFinProvider
+from harvester.providers.openinsider_provider import OpenInsiderProvider
 from harvester.services import (
     BalanceSheetService,
     CashFlowStatementService,
     CompanyService,
     IncomeStatementService,
     SharePriceService,
+    InsiderTransactionService,
 )
 from harvester.services.market import MarketService
 from harvester.services.industry import IndustryService
@@ -44,6 +47,9 @@ _share_price_service = SharePriceService(_provider)
 
 _market_service = MarketService(_provider)
 _industry_service = IndustryService(_provider)
+
+_openinsider_provider = OpenInsiderProvider()
+_insider_service = InsiderTransactionService(_openinsider_provider)
 
 
 
@@ -70,3 +76,5 @@ async def on_request(request: AnyRequest) -> None:
             await _market_service.fetch_and_publish(request)
         case FetchIndustryRequest():
             await _industry_service.fetch_and_publish(request)
+        case FetchInsiderTransactionsRequest():
+            await _insider_service.fetch_and_publish(request)

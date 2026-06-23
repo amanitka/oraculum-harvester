@@ -10,6 +10,7 @@ from harvester.services.cash_flow_statement import CashFlowStatementService
 from harvester.services.company import CompanyService
 from harvester.services.income_statement import IncomeStatementService
 from harvester.services.share_price import SharePriceService
+from harvester.services.insider_transaction import InsiderTransactionService
 
 __all__ = [
     "BalanceSheetService",
@@ -17,4 +18,5 @@ __all__ = [
     "CompanyService",
     "IncomeStatementService",
     "SharePriceService",
+    "InsiderTransactionService",
 ]

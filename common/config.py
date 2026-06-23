@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
 from envyaml import EnvYAML
 
@@ -37,6 +37,11 @@ class Config:
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
         self.harvester_request_topic: str = source.get("harvester.requestTopic")
+
+        self.openinsider_base_url: str = source.get("openinsider.baseUrl", "http://openinsider.com/screener")
+        self.openinsider_records_per_page: int = self._positive_int(source.get("openinsider.recordsPerPage", 1000), "openinsider.recordsPerPage")
+        self.openinsider_delay_seconds: int = self._positive_int(source.get("openinsider.delaySeconds", 2), "openinsider.delaySeconds")
+        self.openinsider_default_params: dict[str, Any] = source.get("openinsider.defaultParams", {})
 
         # Resolve data paths (handles absolute paths for Docker and relative paths for dev).
         raw_data_path = source.get("harvester.dataDirectory")
