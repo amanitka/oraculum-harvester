@@ -77,3 +77,9 @@ class SharePriceService:
             request.market,
             request.from_date,
         )
+
+        # Explicitly clean up the generator and run garbage collection
+        chunk_generator.close()
+        del chunk_generator
+        import gc
+        gc.collect()

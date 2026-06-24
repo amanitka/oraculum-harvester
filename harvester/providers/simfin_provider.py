@@ -368,6 +368,11 @@ class SimFinProvider:
             total_skipped_invalid,
         )
 
+        # Force aggressive memory cleanup to return memory to the OS as much as possible
+        del df
+        import gc
+        gc.collect()
+
     @classmethod
     def _has_required_share_price_fields(cls, row: pd.Series) -> bool:
         for column in _REQUIRED_SHARE_PRICE_COLUMNS:
