@@ -20,16 +20,5 @@ harvester:
 openinsider:
   baseUrl: $ORACULUM_HARVESTER_OPENINSIDER_BASE_URL|"http://openinsider.com/screener"
   recordsPerPage: 1000
-  delaySeconds: 2
-  defaultParams:
-    fd: 730
-    isofficer: 1
-    iscob: 1
-    isceo: 1
-    ispres: 1
-    iscoo: 1
-    iscfo: 1
-    isgc: 1
-    isvp: 1
-    isdirector: 1
-    istenpercent: 1
+  delaySeconds: 4
+  defaultParams: {}
