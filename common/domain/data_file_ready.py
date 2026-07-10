@@ -19,8 +19,18 @@ DatasetType = Literal[
     "income_statement",
     "cash_flow_statement",
     "insider_transaction",
+    "ticker_document",
 ]
 
+class DataFileStatus(BaseModel):
+    ticker: str
+    market: str
+    source: str
+    file_type: str
+    latest_processed_date: Optional[str] = None
+    status: Literal["COMPLETED", "FAILED"]
+    extraction_status: Optional[Literal["FULL", "PARTIAL", "EMPTY"]] = None
+    message: Optional[str] = None
 
 class DataFileReadyEvent(BaseModel):
     """Notification that a dataset has been extracted and saved to a shared Parquet file."""
@@ -36,4 +46,5 @@ class DataFileReadyEvent(BaseModel):
     run_id: str
     file_checksum: str
     record_count: int
+    file_statuses: list[DataFileStatus] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utcnow)

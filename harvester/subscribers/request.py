@@ -21,10 +21,12 @@ from common.requests import (
     FetchMarketRequest,
     FetchIndustryRequest,
     FetchInsiderTransactionsRequest,
+    FetchSecDocumentsRequest,
 )
 from harvester.app import broker
 from harvester.providers.simfin_provider import SimFinProvider
 from harvester.providers.openinsider_provider import OpenInsiderProvider
+from harvester.providers.sec_provider import SecProvider
 from harvester.services import (
     BalanceSheetService,
     CashFlowStatementService,
@@ -35,6 +37,7 @@ from harvester.services import (
 )
 from harvester.services.market import MarketService
 from harvester.services.industry import IndustryService
+from harvester.services.sec_document import SecDocumentService
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +54,8 @@ _industry_service = IndustryService(_provider)
 _openinsider_provider = OpenInsiderProvider()
 _insider_service = InsiderTransactionService(_openinsider_provider)
 
-
+_sec_provider = SecProvider()
+_sec_document_service = SecDocumentService(_sec_provider)
 
 
 @broker.subscriber(
@@ -78,3 +82,5 @@ async def on_request(request: AnyRequest) -> None:
             await _industry_service.fetch_and_publish(request)
         case FetchInsiderTransactionsRequest():
             await _insider_service.fetch_and_publish(request)
+        case FetchSecDocumentsRequest():
+            await _sec_document_service.fetch_sec_documents(request)
