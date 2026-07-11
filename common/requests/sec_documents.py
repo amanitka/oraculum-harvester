@@ -9,6 +9,7 @@ class DocumentTypeRequest(BaseModel):
 
 class TickerDocumentItem(BaseModel):
     ticker: str
+    cik: Optional[str] = None
     market: str = "US"
     document_types: List[DocumentTypeRequest]
 

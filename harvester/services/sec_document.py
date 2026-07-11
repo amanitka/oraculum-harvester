@@ -30,6 +30,7 @@ class SecDocumentService:
         
         for item in request.items:
             ticker = item.ticker
+            cik = getattr(item, "cik", None)
             market = item.market
             
             for doc_req in item.document_types:
@@ -38,12 +39,12 @@ class SecDocumentService:
                 
                 try:
                     if doc_type == "8K":
-                        records, status = self._process_8k(ticker, market, source, hw_date)
+                        records, status = self._process_8k(ticker, market, source, hw_date, cik)
                         all_records.extend(records)
                         refresh_statuses.append(status)
                         
                     elif doc_type == "10K":
-                        records, status = self._process_10k(ticker, market, source, hw_date)
+                        records, status = self._process_10k(ticker, market, source, hw_date, cik)
                         all_records.extend(records)
                         refresh_statuses.append(status)
                         
@@ -97,10 +98,10 @@ class SecDocumentService:
             )
             await data_file_ready.publish(event)
 
-    def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None) -> tuple[list[dict], DataFileStatus]:
+    def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
         fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
-        filings = self.provider.fetch_8k(ticker, after_date=fetch_after)
+        filings = self.provider.fetch_8k(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
             return [], DataFileStatus(
@@ -147,10 +148,10 @@ class SecDocumentService:
             latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
 
-    def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None) -> tuple[list[dict], DataFileStatus]:
+    def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
         """Fetches 10-Ks and extracts Risk Factors and Management Discussion."""
         fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
-        filings = self.provider.fetch_10k(ticker, after_date=fetch_after)
+        filings = self.provider.fetch_10k(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
             return [], DataFileStatus(

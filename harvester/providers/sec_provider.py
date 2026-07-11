@@ -20,11 +20,23 @@ class SecProvider:
         if hasattr(filing, "url"): return filing.url
         return ""
 
-    def fetch_8k(self, ticker: str, after_date: date | None = None) -> list[dict]:
+    def _get_company(self, ticker: str, cik: str | None) -> Company | None:
+        """Attempts to instantiate a Company by CIK first, falling back to Ticker, catching exceptions."""
+        try:
+            if cik:
+                try:
+                    return Company(cik)
+                except Exception as e:
+                    logger.warning(f"[{ticker}] Company not found by CIK {cik}: {e}. Falling back to ticker.")
+            return Company(ticker)
+        except Exception as e:
+            logger.warning(f"Company {ticker} (CIK: {cik}) not found on EDGAR: {e}")
+            return None
+
+    def fetch_8k(self, ticker: str, after_date: date | None = None, cik: str | None = None) -> list[dict]:
         """Fetches 8-K filings filed after after_date and extracts EX99_1."""
-        company = Company(ticker)
+        company = self._get_company(ticker, cik)
         if not company:
-            logger.error(f"Company {ticker} not found on EDGAR.")
             return []
         
         results = []
@@ -79,11 +91,10 @@ class SecProvider:
             
         return results
 
-    def fetch_10k(self, ticker: str, after_date: date | None = None) -> list[dict]:
+    def fetch_10k(self, ticker: str, after_date: date | None = None, cik: str | None = None) -> list[dict]:
         """Fetches 10-K filings filed after after_date and attempts to extract Risk Factors and Management Discussion."""
-        company = Company(ticker)
+        company = self._get_company(ticker, cik)
         if not company:
-            logger.error(f"Company {ticker} not found on EDGAR.")
             return []
         
         results = []
@@ -144,6 +155,10 @@ class SecProvider:
         if not raw_content:
             return ""
         try:
+            if isinstance(raw_content, str):
+                # lxml fails if a string has an XML encoding declaration, so we safely encode it to bytes first
+                raw_content = raw_content.encode('utf-8')
+                
             document = html.fromstring(raw_content)
             raw_text = document.text_content()
             
