@@ -160,46 +160,43 @@ class SecDocumentService:
             
         records = []
         latest_date = None
-        # Process the most recent valid filing
-        f = filings[0]
         
-        risk_factors = f.get("risk_factors")
-        management_discussion = f.get("management_discussion")
-        
-        if risk_factors:
-            doc_id = self._generate_id(source, f["accession_number"], "RF")
-            records.append({
-                "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                "document_type": "10K", "document_subtype": "RF",
-                "accession_number": f["accession_number"], "source_url": f["source_url"],
-                "report_period": f["report_period"],
-                "filing_date": f["filing_date"], "content": risk_factors,
-                "extracted_at": datetime.now(timezone.utc).isoformat()
-            })
+        for f in filings:
+            risk_factors = f.get("risk_factors")
+            management_discussion = f.get("management_discussion")
             
-        if management_discussion:
-            doc_id = self._generate_id(source, f["accession_number"], "MD")
-            records.append({
-                "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                "document_type": "10K", "document_subtype": "MD",
-                "accession_number": f["accession_number"], "source_url": f["source_url"],
-                "report_period": f["report_period"],
-                "filing_date": f["filing_date"], "content": management_discussion,
-                "extracted_at": datetime.now(timezone.utc).isoformat()
-            })
-            
-        if not risk_factors and not management_discussion:
+            if risk_factors:
+                doc_id = self._generate_id(source, f["accession_number"], "RF")
+                records.append({
+                    "id": doc_id, "ticker": ticker, "market": market, "source": source,
+                    "document_type": "10K", "document_subtype": "RF",
+                    "accession_number": f["accession_number"], "source_url": f["source_url"],
+                    "report_period": f["report_period"],
+                    "filing_date": f["filing_date"], "content": risk_factors,
+                    "extracted_at": datetime.now(timezone.utc).isoformat()
+                })
+                
+            if management_discussion:
+                doc_id = self._generate_id(source, f["accession_number"], "MD")
+                records.append({
+                    "id": doc_id, "ticker": ticker, "market": market, "source": source,
+                    "document_type": "10K", "document_subtype": "MD",
+                    "accession_number": f["accession_number"], "source_url": f["source_url"],
+                    "report_period": f["report_period"],
+                    "filing_date": f["filing_date"], "content": management_discussion,
+                    "extracted_at": datetime.now(timezone.utc).isoformat()
+                })
+                
+            if not latest_date or f["filing_date"] > latest_date:
+                latest_date = f["filing_date"]
+                
+        if not records:
             return [], DataFileStatus(
                 ticker=ticker, market=market, source=source, file_type="10K",
-                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both RF and MD"
+                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both RF and MD in all recent filings"
             )
             
-        status_val = "FULL" if (risk_factors and management_discussion) else "PARTIAL"
-        msg = None
-        if not risk_factors: msg = "RF not present"
-        if not management_discussion: msg = "MD not present"
-        
         return records, DataFileStatus(
             ticker=ticker, market=market, source=source, file_type="10K",
-            latest_processed_date=str(f["filing_date"]) if f.get("filing_date") else None, status="COMPLETED", extraction_status=status_val, message=msg
+            latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
