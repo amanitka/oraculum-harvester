@@ -1,7 +1,7 @@
 import logging
 import os
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date
 import pandas as pd
 
 from common.requests.sec_documents import FetchSecDocumentsRequest, TickerDocumentItem
@@ -52,8 +52,8 @@ class SecDocumentService:
                         
                 except Exception as e:
                     logger.exception(f"Error processing {doc_type} for {ticker}: {e}")
-                    refresh_statuses.append(RefreshStatus(
-                        ticker=ticker, market=market, source=source, document_type=doc_type,
+                    refresh_statuses.append(DataFileStatus(
+                        ticker=ticker, market=market, source=source, file_type=doc_type,
                         status="FAILED", message=str(e)
                     ))
                     
@@ -65,7 +65,7 @@ class SecDocumentService:
             output_dir = os.environ.get("DATA_DIR", "/tmp/oraculum_data")
             os.makedirs(output_dir, exist_ok=True)
             
-            run_id = request.run_id or "manual_run"
+            run_id = getattr(request, 'run_id', None) or str(getattr(request, 'correlation_id', 'manual_run'))
             file_name = f"ticker_document_{run_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.parquet"
             file_path = os.path.join(output_dir, file_name)
             
@@ -90,21 +90,18 @@ class SecDocumentService:
             event = DataFileReadyEvent(
                 dataset="ticker_document",
                 path="",
-                run_id=request.run_id or "manual_run",
+                run_id=getattr(request, 'run_id', None) or str(getattr(request, 'correlation_id', 'manual_run')),
                 file_checksum="",
                 record_count=0,
                 file_statuses=refresh_statuses
             )
             await data_file_ready.publish(event)
 
-    def _process_8k(self, ticker: str, market: str, source: str, hw_date: str | None) -> tuple[list[dict], DataFileStatus]:
+    def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None) -> tuple[list[dict], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
-        filings = self.provider.fetch_exhibit_99_1(ticker, limit=5)
+        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        filings = self.provider.fetch_8k(ticker, after_date=fetch_after)
         
-        # Filter by high-water mark
-        if hw_date:
-            filings = [f for f in filings if f["filing_date"] > hw_date]
-            
         if not filings:
             return [], DataFileStatus(
                 ticker=ticker, market=market, source=source, file_type="8K",
@@ -147,16 +144,14 @@ class SecDocumentService:
             
         return records, DataFileStatus(
             ticker=ticker, market=market, source=source, file_type="8K",
-            latest_processed_date=latest_date, status="COMPLETED", extraction_status="FULL", message=None
+            latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
 
-    def _process_10k(self, ticker: str, market: str, source: str, hw_date: str | None) -> tuple[list[dict], DataFileStatus]:
-        """Fetches 10-Ks and extracts ITEM_1A and ITEM_7."""
-        filings = self.provider.fetch_10k_items(ticker, limit=2)
+    def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None) -> tuple[list[dict], DataFileStatus]:
+        """Fetches 10-Ks and extracts Risk Factors and Management Discussion."""
+        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        filings = self.provider.fetch_10k(ticker, after_date=fetch_after)
         
-        if hw_date:
-            filings = [f for f in filings if f["filing_date"] > hw_date]
-            
         if not filings:
             return [], DataFileStatus(
                 ticker=ticker, market=market, source=source, file_type="10K",
@@ -168,43 +163,43 @@ class SecDocumentService:
         # Process the most recent valid filing
         f = filings[0]
         
-        item_1a = f.get("item_1a")
-        item_7 = f.get("item_7")
+        risk_factors = f.get("risk_factors")
+        management_discussion = f.get("management_discussion")
         
-        if item_1a:
-            doc_id = self._generate_id(source, f["accession_number"], "ITEM_1A")
+        if risk_factors:
+            doc_id = self._generate_id(source, f["accession_number"], "RF")
             records.append({
                 "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                "document_type": "10K", "document_subtype": "ITEM_1A",
+                "document_type": "10K", "document_subtype": "RF",
                 "accession_number": f["accession_number"], "source_url": f["source_url"],
                 "report_period": f["report_period"],
-                "filing_date": f["filing_date"], "content": item_1a,
+                "filing_date": f["filing_date"], "content": risk_factors,
                 "extracted_at": datetime.now(timezone.utc).isoformat()
             })
             
-        if item_7:
-            doc_id = self._generate_id(source, f["accession_number"], "ITEM_7")
+        if management_discussion:
+            doc_id = self._generate_id(source, f["accession_number"], "MD")
             records.append({
                 "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                "document_type": "10K", "document_subtype": "ITEM_7",
+                "document_type": "10K", "document_subtype": "MD",
                 "accession_number": f["accession_number"], "source_url": f["source_url"],
                 "report_period": f["report_period"],
-                "filing_date": f["filing_date"], "content": item_7,
+                "filing_date": f["filing_date"], "content": management_discussion,
                 "extracted_at": datetime.now(timezone.utc).isoformat()
             })
             
-        if not item_1a and not item_7:
+        if not risk_factors and not management_discussion:
             return [], DataFileStatus(
                 ticker=ticker, market=market, source=source, file_type="10K",
-                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both ITEM_1A and ITEM_7"
+                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both RF and MD"
             )
             
-        status_val = "FULL" if (item_1a and item_7) else "PARTIAL"
+        status_val = "FULL" if (risk_factors and management_discussion) else "PARTIAL"
         msg = None
-        if not item_1a: msg = "ITEM_1A not present"
-        if not item_7: msg = "ITEM_7 not present"
+        if not risk_factors: msg = "RF not present"
+        if not management_discussion: msg = "MD not present"
         
         return records, DataFileStatus(
             ticker=ticker, market=market, source=source, file_type="10K",
-            latest_processed_date=f["filing_date"], status="COMPLETED", extraction_status=status_val, message=msg
+            latest_processed_date=str(f["filing_date"]) if f.get("filing_date") else None, status="COMPLETED", extraction_status=status_val, message=msg
         )

@@ -1,10 +1,11 @@
 from typing import Literal, List, Optional
+from datetime import date
 from pydantic import BaseModel
 from common.requests.base import Request
 
 class DocumentTypeRequest(BaseModel):
     document_type: str
-    last_processed_file_date: Optional[str] = None
+    last_processed_file_date: Optional[date] = None
 
 class TickerDocumentItem(BaseModel):
     ticker: str
