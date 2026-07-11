@@ -76,7 +76,7 @@ class SecDocumentService:
             
             event = DataFileReadyEvent(
                 dataset="ticker_document",
-                path=file_path,
+                path=file_name,
                 run_id=run_id,
                 file_checksum=checksum,
                 record_count=len(df),
