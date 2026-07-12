@@ -42,12 +42,12 @@ class SecDocumentService:
                 hw_date = doc_req.last_processed_file_date
                 
                 try:
-                    if doc_type == "8K":
+                    if doc_type == "SEC_8K":
                         records, status = self._process_8k(ticker, market, source, hw_date, cik)
                         all_records.extend(records)
                         refresh_statuses.append(status)
                         
-                    elif doc_type == "10K":
+                    elif doc_type == "SEC_10K":
                         records, status = self._process_10k(ticker, market, source, hw_date, cik)
                         all_records.extend(records)
                         refresh_statuses.append(status)
