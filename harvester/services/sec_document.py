@@ -109,7 +109,7 @@ class SecDocumentService:
         
         if not filings:
             return [], DataFileStatus(
-                ticker=ticker, market=market, source=source, file_type="8K",
+                ticker=ticker, market=market, source=source, file_type="SEC_8K",
                 latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="No new filing found"
             )
             
@@ -120,7 +120,7 @@ class SecDocumentService:
             if not f.get("text"):
                 continue
                 
-            doc_subtype = "EX99_1"
+            doc_subtype = "SEC_EX99_1"
             doc_id = self._generate_id(source, f["accession_number"], doc_subtype)
             
             records.append({
@@ -128,7 +128,7 @@ class SecDocumentService:
                 "ticker": ticker,
                 "market": market,
                 "source": source,
-                "document_type": "8K",
+                "document_type": "SEC_8K",
                 "document_subtype": doc_subtype,
                 "accession_number": f["accession_number"],
                 "source_url": f["source_url"],
@@ -143,12 +143,12 @@ class SecDocumentService:
                 
         if not records:
             return [], DataFileStatus(
-                ticker=ticker, market=market, source=source, file_type="8K",
+                ticker=ticker, market=market, source=source, file_type="SEC_8K",
                 latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="No EX99_1 found in recent filings"
             )
             
         return records, DataFileStatus(
-            ticker=ticker, market=market, source=source, file_type="8K",
+            ticker=ticker, market=market, source=source, file_type="SEC_8K",
             latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
 
@@ -159,7 +159,7 @@ class SecDocumentService:
         
         if not filings:
             return [], DataFileStatus(
-                ticker=ticker, market=market, source=source, file_type="10K",
+                ticker=ticker, market=market, source=source, file_type="SEC_10K",
                 latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="No new filing found"
             )
             
@@ -171,10 +171,10 @@ class SecDocumentService:
             management_discussion = f.get("management_discussion")
             
             if risk_factors:
-                doc_id = self._generate_id(source, f["accession_number"], "RF")
+                doc_id = self._generate_id(source, f["accession_number"], "SEC_RF")
                 records.append({
                     "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                    "document_type": "10K", "document_subtype": "RF",
+                    "document_type": "SEC_10K", "document_subtype": "SEC_RF",
                     "accession_number": f["accession_number"], "source_url": f["source_url"],
                     "report_period": f["report_period"],
                     "filing_date": f["filing_date"], "content": risk_factors,
@@ -182,10 +182,10 @@ class SecDocumentService:
                 })
                 
             if management_discussion:
-                doc_id = self._generate_id(source, f["accession_number"], "MD")
+                doc_id = self._generate_id(source, f["accession_number"], "SEC_MD")
                 records.append({
                     "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                    "document_type": "10K", "document_subtype": "MD",
+                    "document_type": "SEC_10K", "document_subtype": "SEC_MD",
                     "accession_number": f["accession_number"], "source_url": f["source_url"],
                     "report_period": f["report_period"],
                     "filing_date": f["filing_date"], "content": management_discussion,
@@ -197,11 +197,11 @@ class SecDocumentService:
                 
         if not records:
             return [], DataFileStatus(
-                ticker=ticker, market=market, source=source, file_type="10K",
+                ticker=ticker, market=market, source=source, file_type="SEC_10K",
                 latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both RF and MD in all recent filings"
             )
             
         return records, DataFileStatus(
-            ticker=ticker, market=market, source=source, file_type="10K",
+            ticker=ticker, market=market, source=source, file_type="SEC_10K",
             latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
