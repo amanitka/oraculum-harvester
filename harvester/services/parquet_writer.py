@@ -26,9 +26,9 @@ def compute_checksum(file_path: Path) -> str:
 
 
 def write_to_parquet(
-    models: List[BaseModel],
+    models: List[Any],
     dataset: str,
-    run_id: str,
+    correlation_id: str,
     market: str,
     template: str | None = None,
     variant: str | None = None,
@@ -47,16 +47,16 @@ def write_to_parquet(
 
     # Build unique filename
     if dataset in ("balance_sheet", "income_statement", "cash_flow_statement"):
-        filename = f"{run_id}_{market}_{dataset}_{template or ''}_{variant or ''}_part-{part:03d}.parquet"
+        filename = f"{correlation_id}_{market}_{dataset}_{template or ''}_{variant or ''}_part-{part:03d}.parquet"
     else:
-        filename = f"{run_id}_{market}_{dataset}_part-{part:03d}.parquet"
+        filename = f"{correlation_id}_{market}_{dataset}_part-{part:03d}.parquet"
 
     tmp_path = target_dir / f"{filename}.tmp"
     final_path = target_dir / filename
 
     # Convert to DataFrame
     # model_dump(by_alias=False) keeps Python field names, so columns match target table schema roughly.
-    df = pd.DataFrame([m.model_dump(mode="json", by_alias=False) for m in models])
+    df = pd.DataFrame([m.model_dump(mode="json", by_alias=False) if hasattr(m, "model_dump") else m for m in models])
 
     # Write to tmp
     df.to_parquet(tmp_path, index=False, engine="pyarrow")

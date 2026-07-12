@@ -35,7 +35,7 @@ class SharePriceService:
             except StopIteration:
                 return None
 
-        run_id = str(request.correlation_id)
+        correlation_id = str(request.correlation_id)
         total_rows = 0
         part = 0
 
@@ -51,20 +51,20 @@ class SharePriceService:
                 write_to_parquet,
                 models=rows_chunk,
                 dataset="share_price",
-                run_id=run_id,
+                correlation_id=correlation_id,
                 market=request.market,
                 part=part,
             )
 
             event = DataFileReadyEvent(
                 dataset="share_price",
-                path=meta["path"],
-                run_id=run_id,
+                file_name=meta["path"],
+                correlation_id=correlation_id,
                 file_checksum=meta["checksum"],
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(event, key=f"share_price:{run_id}:{part}")
+            await publishers.data_file_ready.publish(event, key=f"share_price:{correlation_id}:{part}")
 
             total_rows += len(rows_chunk)
             part += 1

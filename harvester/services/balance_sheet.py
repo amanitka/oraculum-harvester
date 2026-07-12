@@ -37,12 +37,12 @@ class BalanceSheetService:
             if not rows:
                 continue
 
-            run_id = str(request.correlation_id)
+            correlation_id = str(request.correlation_id)
             meta = await asyncio.to_thread(
                 write_to_parquet,
                 models=rows,
                 dataset="balance_sheet",
-                run_id=run_id,
+                correlation_id=correlation_id,
                 market=request.market,
                 template=template,
                 variant=request.variant,
@@ -50,15 +50,15 @@ class BalanceSheetService:
 
             event = DataFileReadyEvent(
                 dataset="balance_sheet",
-                path=meta["path"],
+                file_name=meta["path"],
                 template=template,
                 variant=request.variant,
-                run_id=run_id,
+                correlation_id=correlation_id,
                 file_checksum=meta["checksum"],
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(event, key=f"balance_sheet:{run_id}")
+            await publishers.data_file_ready.publish(event, key=f"balance_sheet:{correlation_id}")
 
             logger.info(
                 "Published %d rows for template '%s' to Parquet [cid=%s]",

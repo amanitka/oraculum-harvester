@@ -37,12 +37,12 @@ class IncomeStatementService:
             if not rows:
                 continue
 
-            run_id = str(request.correlation_id)
+            correlation_id = str(request.correlation_id)
             meta = await asyncio.to_thread(
                 write_to_parquet,
                 models=rows,
                 dataset="income_statement",
-                run_id=run_id,
+                correlation_id=correlation_id,
                 market=request.market,
                 template=template,
                 variant=request.variant,
@@ -50,15 +50,15 @@ class IncomeStatementService:
 
             event = DataFileReadyEvent(
                 dataset="income_statement",
-                path=meta["path"],
+                file_name=meta["path"],
                 template=template,
                 variant=request.variant,
-                run_id=run_id,
+                correlation_id=correlation_id,
                 file_checksum=meta["checksum"],
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(event, key=f"income_statement:{run_id}")
+            await publishers.data_file_ready.publish(event, key=f"income_statement:{correlation_id}")
 
             logger.info(
                 "Published %d rows for template '%s' to Parquet [cid=%s]",

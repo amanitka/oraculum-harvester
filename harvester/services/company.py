@@ -26,24 +26,24 @@ class CompanyService:
         companies = await asyncio.to_thread(lambda: list(self._provider.fetch_companies(market=request.market)))
 
         if companies:
-            run_id = str(request.correlation_id)
+            correlation_id = str(request.correlation_id)
             meta = await asyncio.to_thread(
                 write_to_parquet,
                 models=companies,
                 dataset="company",
-                run_id=run_id,
+                correlation_id=correlation_id,
                 market=request.market,
             )
 
             event = DataFileReadyEvent(
                 dataset="company",
-                path=meta["path"],
-                run_id=run_id,
+                file_name=meta["path"],
+                correlation_id=correlation_id,
                 file_checksum=meta["checksum"],
                 record_count=meta["count"],
             )
 
-            await publishers.data_file_ready.publish(event, key=f"company:{run_id}")
+            await publishers.data_file_ready.publish(event, key=f"company:{correlation_id}")
 
         logger.info(
             "Published %d companies to Parquet [cid=%s market=%s]",

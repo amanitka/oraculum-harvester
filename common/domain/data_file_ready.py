@@ -39,11 +39,11 @@ class DataFileReadyEvent(BaseModel):
 
     event_type: str = "oraculum.data_file_ready"
     dataset: DatasetType
-    path: str
+    file_name: str
     template: Optional[str] = None
     variant: Optional[str] = None
     schema_version: int = 1
-    run_id: str
+    correlation_id: str
     file_checksum: str
     record_count: int
     file_statuses: list[DataFileStatus] = Field(default_factory=list)

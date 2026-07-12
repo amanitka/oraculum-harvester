@@ -1,13 +1,17 @@
 import logging
 import os
 import hashlib
+import gc
 from datetime import datetime, timezone, timedelta, date
 import pandas as pd
 
-from common.requests.sec_documents import FetchSecDocumentsRequest, TickerDocumentItem
+from common.config import config
+from common.requests.sec_documents import FetchSecDocumentsRequest
 from common.domain.data_file_ready import DataFileReadyEvent, DataFileStatus
 from harvester.providers.sec_provider import SecProvider
 from harvester.publishers import data_file_ready
+import asyncio
+from harvester.services.parquet_writer import write_to_parquet
 
 logger = logging.getLogger(__name__)
 
@@ -60,43 +64,43 @@ class SecDocumentService:
                     
         # If we have extracted data, write to Parquet and publish event
         if all_records:
-            df = pd.DataFrame(all_records)
+            correlation_id = getattr(request, 'correlation_id', None) or str(getattr(request, 'correlation_id', 'manual_run'))
             
-            # Ensure output directory exists
-            output_dir = os.environ.get("DATA_DIR", "/tmp/oraculum_data")
-            os.makedirs(output_dir, exist_ok=True)
-            
-            run_id = getattr(request, 'run_id', None) or str(getattr(request, 'correlation_id', 'manual_run'))
-            file_name = f"ticker_document_{run_id}_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.parquet"
-            file_path = os.path.join(output_dir, file_name)
-            
-            df.to_parquet(file_path, engine='pyarrow')
-            
-            checksum = hashlib.md5(open(file_path, 'rb').read()).hexdigest()
+            meta = await asyncio.to_thread(
+                write_to_parquet,
+                models=all_records,
+                dataset="ticker_document",
+                correlation_id=correlation_id,
+                market="us"
+            )
             
             event = DataFileReadyEvent(
                 dataset="ticker_document",
-                path=file_name,
-                run_id=run_id,
-                file_checksum=checksum,
-                record_count=len(df),
+                file_name=meta["path"],
+                correlation_id=correlation_id,
+                file_checksum=meta["checksum"],
+                record_count=meta["count"],
                 file_statuses=refresh_statuses
             )
             
             await data_file_ready.publish(event)
-            logger.info(f"Published DataFileReadyEvent for {len(df)} SEC documents")
+            logger.info(f"Published DataFileReadyEvent for {meta['count']} SEC documents")
         else:
             # Even if no files were found, we must still publish an event to update the sync status in DB
             logger.info("No new SEC documents found, publishing empty event with sync status")
             event = DataFileReadyEvent(
                 dataset="ticker_document",
-                path="",
-                run_id=getattr(request, 'run_id', None) or str(getattr(request, 'correlation_id', 'manual_run')),
+                file_name="",
+                correlation_id=getattr(request, 'correlation_id', None) or str(getattr(request, 'correlation_id', 'manual_run')),
                 file_checksum="",
                 record_count=0,
                 file_statuses=refresh_statuses
             )
             await data_file_ready.publish(event)
+
+        # Run garbage collection after processing and publishing to free up memory from large parsing/dataframes
+        gc.collect()
+        logger.debug("Garbage collection completed after SEC documents processing.")
 
     def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
