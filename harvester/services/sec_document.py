@@ -64,7 +64,7 @@ class SecDocumentService:
                     
         # If we have extracted data, write to Parquet and publish event
         if all_records:
-            correlation_id = getattr(request, 'correlation_id', None) or str(getattr(request, 'correlation_id', 'manual_run'))
+            correlation_id = str(getattr(request, 'correlation_id', 'manual_run'))
             
             meta = await asyncio.to_thread(
                 write_to_parquet,
@@ -91,7 +91,7 @@ class SecDocumentService:
             event = DataFileReadyEvent(
                 dataset="ticker_document",
                 file_name="",
-                correlation_id=getattr(request, 'correlation_id', None) or str(getattr(request, 'correlation_id', 'manual_run')),
+                correlation_id=str(getattr(request, 'correlation_id', 'manual_run')),
                 file_checksum="",
                 record_count=0,
                 file_statuses=refresh_statuses
