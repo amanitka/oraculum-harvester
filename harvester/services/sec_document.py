@@ -1,11 +1,9 @@
 import logging
-import os
 import hashlib
 import gc
 from datetime import datetime, timezone, timedelta, date
-import pandas as pd
+from typing import Any
 
-from common.config import config
 from common.requests.sec_documents import FetchSecDocumentsRequest
 from common.domain.data_file_ready import DataFileReadyEvent, DataFileStatus
 from harvester.providers.sec_provider import SecProvider
@@ -23,6 +21,19 @@ class SecDocumentService:
         """SHA256(source + accession_number + document_subtype)"""
         raw = f"{source}{accession_number}{document_subtype}".encode('utf-8')
         return hashlib.sha256(raw).hexdigest()
+
+    def _parse_report_period(self, report_period: Any) -> date | None:
+        """Safely parses various report_period formats into a native date object."""
+        if not report_period:
+            return None
+        if isinstance(report_period, str):
+            try:
+                return datetime.strptime(report_period, "%Y-%m-%d").date()
+            except ValueError:
+                return None
+        elif isinstance(report_period, datetime):
+            return report_period.date()
+        return report_period
 
     async def fetch_sec_documents(self, request: FetchSecDocumentsRequest) -> None:
         """Handles the fetch_sec_documents command."""
@@ -104,7 +115,8 @@ class SecDocumentService:
 
     def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
-        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
+        fetch_after = hw_date if hw_date else history_limit_date
         filings = self.provider.fetch_8k(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
@@ -115,9 +127,17 @@ class SecDocumentService:
             
         records = []
         latest_date = None
+        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         
         for f in filings:
             if not f.get("text"):
+                continue
+                
+            report_period = f.get("report_period")
+            rp_date = self._parse_report_period(report_period)
+                    
+            if rp_date and rp_date < history_limit_date:
+                logger.warning(f"Skipping 8-K filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
                 continue
                 
             doc_subtype = "SEC_EX99_1"
@@ -165,8 +185,16 @@ class SecDocumentService:
             
         records = []
         latest_date = None
+        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         
         for f in filings:
+            report_period = f.get("report_period")
+            rp_date = self._parse_report_period(report_period)
+                    
+            if rp_date and rp_date < history_limit_date:
+                logger.warning(f"Skipping 10-K filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
+                continue
+                
             risk_factors = f.get("risk_factors")
             management_discussion = f.get("management_discussion")
             
