@@ -65,22 +65,26 @@ _sec_document_service = SecDocumentService(_sec_provider)
 )
 async def on_request(request: AnyRequest) -> None:
     """Dispatch an incoming fetch request to its owning domain service."""
-    match request:
-        case FetchCompanyRequest():
-            await _company_service.fetch_and_publish(request)
-        case FetchIncomeStatementRequest():
-            await _income_service.fetch_and_publish(request)
-        case FetchBalanceSheetRequest():
-            await _balance_service.fetch_and_publish(request)
-        case FetchCashFlowStatementRequest():
-            await _cash_flow_service.fetch_and_publish(request)
-        case FetchSharePriceRequest():
-            await _share_price_service.fetch_and_publish(request)
-        case FetchMarketRequest():
-            await _market_service.fetch_and_publish(request)
-        case FetchIndustryRequest():
-            await _industry_service.fetch_and_publish(request)
-        case FetchInsiderTransactionsRequest():
-            await _insider_service.fetch_and_publish(request)
-        case FetchSecDocumentsRequest():
-            await _sec_document_service.fetch_sec_documents(request)
+    try:
+        match request:
+            case FetchCompanyRequest():
+                await _company_service.fetch_and_publish(request)
+            case FetchIncomeStatementRequest():
+                await _income_service.fetch_and_publish(request)
+            case FetchBalanceSheetRequest():
+                await _balance_service.fetch_and_publish(request)
+            case FetchCashFlowStatementRequest():
+                await _cash_flow_service.fetch_and_publish(request)
+            case FetchSharePriceRequest():
+                await _share_price_service.fetch_and_publish(request)
+            case FetchMarketRequest():
+                await _market_service.fetch_and_publish(request)
+            case FetchIndustryRequest():
+                await _industry_service.fetch_and_publish(request)
+            case FetchInsiderTransactionsRequest():
+                await _insider_service.fetch_and_publish(request)
+            case FetchSecDocumentsRequest():
+                await _sec_document_service.fetch_sec_documents(request)
+    finally:
+        from common.memory import release_memory
+        release_memory()

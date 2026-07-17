@@ -78,8 +78,8 @@ class SharePriceService:
             request.from_date,
         )
 
-        # Explicitly clean up the generator and run garbage collection
+        # Explicitly clean up the generator and release memory back to the OS
         chunk_generator.close()
         del chunk_generator
-        import gc
-        gc.collect()
+        from common.memory import release_memory
+        release_memory()

@@ -370,8 +370,8 @@ class SimFinProvider:
 
         # Force aggressive memory cleanup to return memory to the OS as much as possible
         del df
-        import gc
-        gc.collect()
+        from common.memory import release_memory
+        release_memory()
 
     @classmethod
     def _has_required_share_price_fields(cls, row: pd.Series) -> bool:

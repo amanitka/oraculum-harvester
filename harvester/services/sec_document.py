@@ -115,9 +115,9 @@ class SecDocumentService:
             )
             await data_file_ready.publish(event)
 
-        # Run garbage collection after processing and publishing to free up memory from large parsing/dataframes
-        gc.collect()
-        logger.debug("Garbage collection completed after SEC documents processing.")
+        # Run garbage collection and trim malloc to release memory back to the OS
+        from common.memory import release_memory
+        release_memory()
 
     def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
