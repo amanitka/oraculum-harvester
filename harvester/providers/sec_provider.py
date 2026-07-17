@@ -149,6 +149,54 @@ class SecProvider:
             
         return results
 
+    def fetch_10q(self, ticker: str, after_date: date | None = None, cik: str | None = None) -> list[dict]:
+        """Fetches 10-Q filings filed after after_date and attempts to extract Risk Factors and Management Discussion."""
+        company = self._get_company(ticker, cik)
+        if not company:
+            return []
+        
+        results = []
+        try:
+            logger.info(f"[{ticker}] Fetching 10-Q filings since {after_date}")
+            
+            filings_obj = company.get_filings(form="10-Q")
+            
+            if hasattr(filings_obj, "__iter__"):
+                filings = list(filings_obj)
+            elif filings_obj:
+                filings = [filings_obj]
+            else:
+                filings = []
+                
+            for filing in filings:
+                filing_date_obj = datetime.strptime(str(filing.filing_date)[:10], "%Y-%m-%d").date()
+                if after_date and filing_date_obj <= after_date:
+                    continue
+                    
+                url = self._get_url(filing)
+                logger.debug(f"[{ticker}] Checking 10-Q filing at {url} (Date: {filing.filing_date})")
+                
+                tenq = filing.obj() if hasattr(filing, "obj") else None
+                item_1a_text = None
+                item_2_text = None
+                
+                if tenq:
+                    item_1a_text = tenq['Item 1A']
+                    item_2_text = tenq['Item 2']
+                
+                results.append({
+                    "accession_number": filing.accession_no,
+                    "source_url": url,
+                    "report_period": getattr(filing, "report_date", filing.filing_date) or filing.filing_date,
+                    "filing_date": filing.filing_date,
+                    "risk_factors": self.extract_clean_text(item_1a_text) if item_1a_text else None,
+                    "management_discussion": self.extract_clean_text(item_2_text) if item_2_text else None
+                })
+        except Exception as e:
+            logger.error(f"Error fetching 10-Q for {ticker}: {e}")
+            
+        return results
+
     @staticmethod
     def extract_clean_text(raw_content: bytes | str) -> str:
         """Strips HTML and cleans whitespace."""

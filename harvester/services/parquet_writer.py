@@ -26,7 +26,7 @@ def compute_checksum(file_path: Path) -> str:
 
 
 def write_to_parquet(
-    models: List[Any],
+    models: List[BaseModel],
     dataset: str,
     correlation_id: str,
     market: str,
@@ -56,7 +56,7 @@ def write_to_parquet(
 
     # Convert to DataFrame
     # model_dump(by_alias=False) keeps Python field names, so columns match target table schema roughly.
-    df = pd.DataFrame([m.model_dump(mode="json", by_alias=False) if hasattr(m, "model_dump") else m for m in models])
+    df = pd.DataFrame([m.model_dump(mode="json", by_alias=False) for m in models])
 
     # Write to tmp
     df.to_parquet(tmp_path, index=False, engine="pyarrow")

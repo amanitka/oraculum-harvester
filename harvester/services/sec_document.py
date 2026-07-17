@@ -6,6 +6,7 @@ from typing import Any
 
 from common.requests.sec_documents import FetchSecDocumentsRequest
 from common.domain.data_file_ready import DataFileReadyEvent, DataFileStatus
+from common.domain.ticker_document import TickerDocument
 from harvester.providers.sec_provider import SecProvider
 from harvester.publishers import data_file_ready
 import asyncio
@@ -63,6 +64,11 @@ class SecDocumentService:
                         all_records.extend(records)
                         refresh_statuses.append(status)
                         
+                    elif doc_type == "SEC_10Q":
+                        records, status = self._process_10q(ticker, market, source, hw_date, cik)
+                        all_records.extend(records)
+                        refresh_statuses.append(status)
+                        
                     else:
                         logger.warning(f"Unsupported document type: {doc_type}")
                         
@@ -113,7 +119,7 @@ class SecDocumentService:
         gc.collect()
         logger.debug("Garbage collection completed after SEC documents processing.")
 
-    def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
+    def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
         history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         fetch_after = hw_date if hw_date else history_limit_date
@@ -143,20 +149,20 @@ class SecDocumentService:
             doc_subtype = "SEC_EX99_1"
             doc_id = self._generate_id(source, f["accession_number"], doc_subtype)
             
-            records.append({
-                "id": doc_id,
-                "ticker": ticker,
-                "market": market,
-                "source": source,
-                "document_type": "SEC_8K",
-                "document_subtype": doc_subtype,
-                "accession_number": f["accession_number"],
-                "source_url": f["source_url"],
-                "report_period": f["report_period"],
-                "filing_date": f["filing_date"],
-                "content": f["text"],
-                "extracted_at": datetime.now(timezone.utc).isoformat()
-            })
+            records.append(TickerDocument(
+                id=doc_id,
+                ticker=ticker,
+                market=market,
+                source=source,
+                document_type="SEC_8K",
+                document_subtype=doc_subtype,
+                accession_number=f["accession_number"],
+                source_url=f["source_url"],
+                report_period=f["report_period"],
+                filing_date=f["filing_date"],
+                content=f["text"],
+                extracted_at=datetime.now(timezone.utc)
+            ))
             
             if not latest_date or f["filing_date"] > latest_date:
                 latest_date = f["filing_date"]
@@ -172,7 +178,7 @@ class SecDocumentService:
             latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
 
-    def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[dict], DataFileStatus]:
+    def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 10-Ks and extracts Risk Factors and Management Discussion."""
         fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
         filings = self.provider.fetch_10k(ticker, after_date=fetch_after, cik=cik)
@@ -200,25 +206,25 @@ class SecDocumentService:
             
             if risk_factors:
                 doc_id = self._generate_id(source, f["accession_number"], "SEC_RF")
-                records.append({
-                    "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                    "document_type": "SEC_10K", "document_subtype": "SEC_RF",
-                    "accession_number": f["accession_number"], "source_url": f["source_url"],
-                    "report_period": f["report_period"],
-                    "filing_date": f["filing_date"], "content": risk_factors,
-                    "extracted_at": datetime.now(timezone.utc).isoformat()
-                })
+                records.append(TickerDocument(
+                    id=doc_id, ticker=ticker, market=market, source=source,
+                    document_type="SEC_10K", document_subtype="SEC_RF",
+                    accession_number=f["accession_number"], source_url=f["source_url"],
+                    report_period=f["report_period"],
+                    filing_date=f["filing_date"], content=risk_factors,
+                    extracted_at=datetime.now(timezone.utc)
+                ))
                 
             if management_discussion:
                 doc_id = self._generate_id(source, f["accession_number"], "SEC_MD")
-                records.append({
-                    "id": doc_id, "ticker": ticker, "market": market, "source": source,
-                    "document_type": "SEC_10K", "document_subtype": "SEC_MD",
-                    "accession_number": f["accession_number"], "source_url": f["source_url"],
-                    "report_period": f["report_period"],
-                    "filing_date": f["filing_date"], "content": management_discussion,
-                    "extracted_at": datetime.now(timezone.utc).isoformat()
-                })
+                records.append(TickerDocument(
+                    id=doc_id, ticker=ticker, market=market, source=source,
+                    document_type="SEC_10K", document_subtype="SEC_MD",
+                    accession_number=f["accession_number"], source_url=f["source_url"],
+                    report_period=f["report_period"],
+                    filing_date=f["filing_date"], content=management_discussion,
+                    extracted_at=datetime.now(timezone.utc)
+                ))
                 
             if not latest_date or f["filing_date"] > latest_date:
                 latest_date = f["filing_date"]
@@ -231,5 +237,67 @@ class SecDocumentService:
             
         return records, DataFileStatus(
             ticker=ticker, market=market, source=source, file_type="SEC_10K",
+            latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
+        )
+
+    def _process_10q(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
+        """Fetches 10-Qs and extracts Risk Factors and Management Discussion."""
+        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        filings = self.provider.fetch_10q(ticker, after_date=fetch_after, cik=cik)
+        
+        if not filings:
+            return [], DataFileStatus(
+                ticker=ticker, market=market, source=source, file_type="SEC_10Q",
+                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="No new filing found"
+            )
+            
+        records = []
+        latest_date = None
+        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
+        
+        for f in filings:
+            report_period = f.get("report_period")
+            rp_date = self._parse_report_period(report_period)
+                    
+            if rp_date and rp_date < history_limit_date:
+                logger.warning(f"Skipping 10-Q filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
+                continue
+                
+            risk_factors = f.get("risk_factors")
+            management_discussion = f.get("management_discussion")
+            
+            if risk_factors:
+                doc_id = self._generate_id(source, f["accession_number"], "SEC_RF")
+                records.append(TickerDocument(
+                    id=doc_id, ticker=ticker, market=market, source=source,
+                    document_type="SEC_10Q", document_subtype="SEC_RF",
+                    accession_number=f["accession_number"], source_url=f["source_url"],
+                    report_period=f["report_period"],
+                    filing_date=f["filing_date"], content=risk_factors,
+                    extracted_at=datetime.now(timezone.utc)
+                ))
+                
+            if management_discussion:
+                doc_id = self._generate_id(source, f["accession_number"], "SEC_MD")
+                records.append(TickerDocument(
+                    id=doc_id, ticker=ticker, market=market, source=source,
+                    document_type="SEC_10Q", document_subtype="SEC_MD",
+                    accession_number=f["accession_number"], source_url=f["source_url"],
+                    report_period=f["report_period"],
+                    filing_date=f["filing_date"], content=management_discussion,
+                    extracted_at=datetime.now(timezone.utc)
+                ))
+                
+            if not latest_date or f["filing_date"] > latest_date:
+                latest_date = f["filing_date"]
+                
+        if not records:
+            return [], DataFileStatus(
+                ticker=ticker, market=market, source=source, file_type="SEC_10Q",
+                latest_processed_date=None, status="COMPLETED", extraction_status="EMPTY", message="Missing both RF and MD in all recent filings"
+            )
+            
+        return records, DataFileStatus(
+            ticker=ticker, market=market, source=source, file_type="SEC_10Q",
             latest_processed_date=str(latest_date) if latest_date else None, status="COMPLETED", extraction_status="FULL", message=None
         )
