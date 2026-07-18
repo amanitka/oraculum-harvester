@@ -15,8 +15,15 @@ from harvester.services.parquet_writer import write_to_parquet
 logger = logging.getLogger(__name__)
 
 class SecDocumentService:
+    HISTORY_LIMIT_YEARS: int = 2
+
     def __init__(self, provider: SecProvider):
         self.provider = provider
+
+    @property
+    def history_limit_date(self) -> date:
+        """Get the cutoff date for historical SEC filings based on the configured limit."""
+        return datetime.now(timezone.utc).date() - timedelta(days=self.HISTORY_LIMIT_YEARS * 365)
 
     def _generate_id(self, source: str, accession_number: str, document_subtype: str) -> str:
         """SHA256(source + accession_number + document_subtype)"""
@@ -121,8 +128,8 @@ class SecDocumentService:
 
     def _process_8k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 8-Ks and extracts EX99_1."""
-        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
-        fetch_after = hw_date if hw_date else history_limit_date
+        limit_date = self.history_limit_date
+        fetch_after = hw_date if hw_date else limit_date
         filings = self.provider.fetch_8k(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
@@ -133,7 +140,6 @@ class SecDocumentService:
             
         records = []
         latest_date = None
-        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         
         for f in filings:
             if not f.get("text"):
@@ -142,8 +148,8 @@ class SecDocumentService:
             report_period = f.get("report_period")
             rp_date = self._parse_report_period(report_period)
                     
-            if rp_date and rp_date < history_limit_date:
-                logger.warning(f"Skipping 8-K filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
+            if rp_date and rp_date < limit_date:
+                logger.warning(f"Skipping 8-K filing for {ticker} because report_period {report_period} is older than {self.HISTORY_LIMIT_YEARS} years ({limit_date})")
                 continue
                 
             doc_subtype = "SEC_EX99_1"
@@ -180,7 +186,8 @@ class SecDocumentService:
 
     def _process_10k(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 10-Ks and extracts Risk Factors and Management Discussion."""
-        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        limit_date = self.history_limit_date
+        fetch_after = hw_date if hw_date else limit_date
         filings = self.provider.fetch_10k(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
@@ -191,14 +198,13 @@ class SecDocumentService:
             
         records = []
         latest_date = None
-        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         
         for f in filings:
             report_period = f.get("report_period")
             rp_date = self._parse_report_period(report_period)
                     
-            if rp_date and rp_date < history_limit_date:
-                logger.warning(f"Skipping 10-K filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
+            if rp_date and rp_date < limit_date:
+                logger.warning(f"Skipping 10-K filing for {ticker} because report_period {report_period} is older than {self.HISTORY_LIMIT_YEARS} years ({limit_date})")
                 continue
                 
             risk_factors = f.get("risk_factors")
@@ -242,7 +248,8 @@ class SecDocumentService:
 
     def _process_10q(self, ticker: str, market: str, source: str, hw_date: date | None, cik: str | None = None) -> tuple[list[TickerDocument], DataFileStatus]:
         """Fetches 10-Qs and extracts Risk Factors and Management Discussion."""
-        fetch_after = hw_date if hw_date else (datetime.now(timezone.utc).date() - timedelta(days=5 * 365))
+        limit_date = self.history_limit_date
+        fetch_after = hw_date if hw_date else limit_date
         filings = self.provider.fetch_10q(ticker, after_date=fetch_after, cik=cik)
         
         if not filings:
@@ -253,14 +260,13 @@ class SecDocumentService:
             
         records = []
         latest_date = None
-        history_limit_date = datetime.now(timezone.utc).date() - timedelta(days=5 * 365)
         
         for f in filings:
             report_period = f.get("report_period")
             rp_date = self._parse_report_period(report_period)
                     
-            if rp_date and rp_date < history_limit_date:
-                logger.warning(f"Skipping 10-Q filing for {ticker} because report_period {report_period} is older than 5 years ({history_limit_date})")
+            if rp_date and rp_date < limit_date:
+                logger.warning(f"Skipping 10-Q filing for {ticker} because report_period {report_period} is older than {self.HISTORY_LIMIT_YEARS} years ({limit_date})")
                 continue
                 
             risk_factors = f.get("risk_factors")

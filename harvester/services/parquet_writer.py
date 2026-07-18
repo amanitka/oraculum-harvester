@@ -67,10 +67,14 @@ def write_to_parquet(
     # Atomic rename
     os.rename(tmp_path, final_path)
 
-    logger.debug("Wrote %d rows to %s", len(df), final_path)
+    count = len(df)
+    logger.debug("Wrote %d rows to %s", count, final_path)
+
+    # Reclaim DataFrame memory immediately
+    del df
 
     return {
-        "count": len(df),
+        "count": count,
         "path": filename,
         "checksum": checksum,
     }

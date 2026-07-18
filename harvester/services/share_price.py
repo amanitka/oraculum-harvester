@@ -68,6 +68,9 @@ class SharePriceService:
 
             total_rows += len(rows_chunk)
             part += 1
+            del rows_chunk
+            from common.memory import release_memory
+            release_memory()
 
         logger.info(
             "Published %d share price rows in %d parts to Parquet [cid=%s market=%s from_date=%s]",
