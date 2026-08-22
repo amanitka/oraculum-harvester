@@ -54,6 +54,14 @@ class Config:
         self.harvester_exchange_directory: Path = parsed_exchange_path if parsed_exchange_path.is_absolute() else _ROOT_DIR / parsed_exchange_path
         self.harvester_exchange_directory.mkdir(parents=True, exist_ok=True)
 
+        self.sec_user_agent: str = source.get(
+            "sec.userAgent", "OraculumHarvester admin@oraculum-analytics.com"
+        )
+        self.sec_bulk_13f_base_url: str = source.get(
+            "sec.bulk13fBaseUrl",
+            "https://www.sec.gov/files/structureddata/data/form-13f-data-sets",
+        )
+
     @staticmethod
     def _parse_brokers(value: str | list[str] | None) -> List[str]:
         if not value:

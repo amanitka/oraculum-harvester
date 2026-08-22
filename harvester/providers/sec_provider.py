@@ -3,14 +3,16 @@ from edgar import set_identity, Company
 from lxml import html
 from datetime import date, datetime
 
+from common.config import config
+
 logger = logging.getLogger(__name__)
 
 class SecProvider:
     """Provider for fetching SEC EDGAR filings."""
     
-    def __init__(self, user_agent: str = "Oraculum_Harvester user@oraculum.local"):
-        # EDGAR requires a user agent
-        set_identity(user_agent)
+    def __init__(self, user_agent: str | None = None):
+        # SEC requires a descriptive User-Agent; shared across all SEC providers.
+        set_identity(user_agent or config.sec_user_agent)
 
     @staticmethod
     def _get_url(filing) -> str:

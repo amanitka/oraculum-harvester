@@ -20,6 +20,8 @@ DatasetType = Literal[
     "cash_flow_statement",
     "insider_transaction",
     "ticker_document",
+    "sec_13f_holding",
+    "sec_13f_filer",
 ]
 
 class DataFileStatus(BaseModel):
@@ -46,5 +48,6 @@ class DataFileReadyEvent(BaseModel):
     correlation_id: str
     file_checksum: str
     record_count: int
+    is_final_part: bool = True
     file_statuses: list[DataFileStatus] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utcnow)

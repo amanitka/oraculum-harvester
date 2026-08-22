@@ -22,11 +22,13 @@ from common.requests import (
     FetchIndustryRequest,
     FetchInsiderTransactionsRequest,
     FetchSecDocumentsRequest,
+    Fetch13FBulkRequest,
 )
 from harvester.app import broker
 from harvester.providers.simfin_provider import SimFinProvider
 from harvester.providers.openinsider_provider import OpenInsiderProvider
 from harvester.providers.sec_provider import SecProvider
+from harvester.providers.sec_13f_provider import Sec13FProvider
 from harvester.services import (
     BalanceSheetService,
     CashFlowStatementService,
@@ -38,6 +40,7 @@ from harvester.services import (
 from harvester.services.market import MarketService
 from harvester.services.industry import IndustryService
 from harvester.services.sec_document import SecDocumentService
+from harvester.services.sec_13f import Sec13FService
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,9 @@ _insider_service = InsiderTransactionService(_openinsider_provider)
 
 _sec_provider = SecProvider()
 _sec_document_service = SecDocumentService(_sec_provider)
+
+_sec_13f_provider = Sec13FProvider()
+_sec_13f_service  = Sec13FService(_sec_13f_provider)
 
 
 @broker.subscriber(
@@ -85,6 +91,8 @@ async def on_request(request: AnyRequest) -> None:
                 await _insider_service.fetch_and_publish(request)
             case FetchSecDocumentsRequest():
                 await _sec_document_service.fetch_sec_documents(request)
+            case Fetch13FBulkRequest():
+                await _sec_13f_service.fetch_and_publish(request)
     finally:
         from common.memory import release_memory
         release_memory()

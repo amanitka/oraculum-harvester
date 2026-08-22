@@ -6,22 +6,72 @@ Event-driven financial data harvester built with FastStream (Kafka), Python, and
 
 ## Architecture
 
-The Harvester service runs as a background worker consuming ingestion requests from Kafka, retrieving the datasets from external APIs, writing large datasets locally as Parquet files, and publishing events back to Kafka.
+The Harvester service runs as an event-driven background worker consuming ingestion requests from Kafka, retrieving datasets from external APIs, writing large datasets locally as Parquet files, and publishing events back to Kafka.
 
-```
-FetchXxxRequest → [Kafka: oraculum.harvester.request]
-    → harvester (SimFin fetch + publish)
-        ├── [Local Storage: /data/export/*.parquet]
-        ├── [Kafka: oraculum.data_file_ready] (DataFileReadyEvent)
-        └── [Kafka: oraculum.industry / oraculum.market] (Small metadata records)
+```mermaid
+flowchart TD
+    subgraph Oraculum Backend
+        Spring[("Spring Boot (Java)")]
+    end
+
+    subgraph Kafka Broker
+        TopicReq["Topic: oraculum.harvester.request"]
+        TopicReady["Topic: oraculum.data_file_ready"]
+        TopicMeta["Topic: oraculum.industry / market"]
+    end
+
+    subgraph Harvester (Python / FastStream)
+        Subscriber["Kafka Subscriber\n(Message Router)"]
+        
+        subgraph Services
+            SimFinSvc["SimFin Service"]
+            OpenInsiderSvc["OpenInsider Service"]
+            SECSvc["SEC 13F Service"]
+        end
+        
+        ParquetWriter["Parquet Writer\n(PyArrow)"]
+    end
+
+    subgraph External Data Providers
+        SimFinAPI["SimFin API\n(Fundamentals, Prices)"]
+        SEC_EDGAR["SEC EDGAR\n(13F Institutional Holdings)"]
+        OpenInsiderAPI["OpenInsider\n(Insider Trades)"]
+    end
+
+    subgraph Shared Storage
+        ExchangeDir[("Parquet Exchange Directory")]
+    end
+
+    %% Flow
+    Spring -- "Publishes Request" --> TopicReq
+    TopicReq -- "Consumes" --> Subscriber
+    
+    Subscriber -- "Routes" --> SimFinSvc
+    Subscriber -- "Routes" --> OpenInsiderSvc
+    Subscriber -- "Routes" --> SECSvc
+    
+    SimFinSvc -- "Fetches" --> SimFinAPI
+    OpenInsiderSvc -- "Fetches" --> OpenInsiderAPI
+    SECSvc -- "Fetches" --> SEC_EDGAR
+    
+    SimFinSvc --> ParquetWriter
+    OpenInsiderSvc --> ParquetWriter
+    SECSvc --> ParquetWriter
+    
+    ParquetWriter -- "Writes Data" --> ExchangeDir
+    ParquetWriter -- "Publishes Event" --> TopicReady
+    SimFinSvc -- "Publishes Metadata" --> TopicMeta
+    
+    TopicReady -- "Consumes" --> Spring
+    ExchangeDir -- "Reads Data" --> Spring
 ```
 
 ### Ingestion Flow Details
 
-- **Large Datasets** (Companies, Share Prices, Income Statements, Balance Sheets, Cash Flow Statements):
-  Fetched from SimFin, written locally to a Parquet file inside the configured exchange directory, and a `DataFileReadyEvent` is published to `oraculum.data_file_ready`.
+- **Large Datasets** (Companies, Share Prices, Income Statements, Balance Sheets, Cash Flow Statements, Insider Transactions, SEC 13F Holdings):
+  Fetched from providers (SimFin, SEC, OpenInsider), written locally to a Parquet file inside the configured exchange directory, and a `DataFileReadyEvent` is published to `oraculum.data_file_ready`.
 - **Static Metadata** (Industries, Markets):
-  Fetched from SimFin and published directly to their respective Kafka topics (`oraculum.industry` and `oraculum.market`).
+  Fetched and published directly to their respective Kafka topics (`oraculum.industry` and `oraculum.market`).
 
 ---
 
