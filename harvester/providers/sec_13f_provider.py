@@ -134,9 +134,11 @@ class Sec13FProvider:
 
     @staticmethod
     def _read_tsv(zf: zipfile.ZipFile, filename: str, cols: list[str]) -> pd.DataFrame:
-        """Read a TSV from the ZIP, keeping only the columns we need."""
-        names = [n.strip() for n in zf.open(filename).readline().decode().split("\t")]
-        zf.open(filename).close()  # rewind via re-open
+        """Read a TSV from the ZIP, keeping only the columns we need.
+
+        Each zipfile.open() call returns a fresh stream from the start of the
+        entry, so pd.read_csv receives the full file including the header row.
+        """
         df = pd.read_csv(
             zf.open(filename),
             sep="\t",
