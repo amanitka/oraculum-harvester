@@ -10,60 +10,60 @@ The Harvester service runs as an event-driven background worker consuming ingest
 
 ```mermaid
 flowchart TD
-    subgraph Oraculum Backend
+    subgraph Backend ["Oraculum Backend"]
         Spring[("Spring Boot (Java)")]
     end
 
-    subgraph Kafka Broker
+    subgraph Kafka ["Kafka Broker"]
         TopicReq["Topic: oraculum.harvester.request"]
         TopicReady["Topic: oraculum.data_file_ready"]
         TopicMeta["Topic: oraculum.industry / market"]
     end
 
-    subgraph Harvester (Python / FastStream)
-        Subscriber["Kafka Subscriber\n(Message Router)"]
+    subgraph Harvester ["Harvester (Python / FastStream)"]
+        Subscriber["Kafka Subscriber<br/>(Message Router)"]
         
-        subgraph Services
+        subgraph Services ["Services"]
             SimFinSvc["SimFin Service"]
             OpenInsiderSvc["OpenInsider Service"]
             SECSvc["SEC 13F Service"]
         end
         
-        ParquetWriter["Parquet Writer\n(PyArrow)"]
+        ParquetWriter["Parquet Writer<br/>(PyArrow)"]
     end
 
-    subgraph External Data Providers
-        SimFinAPI["SimFin API\n(Fundamentals, Prices)"]
-        SEC_EDGAR["SEC EDGAR\n(13F Institutional Holdings)"]
-        OpenInsiderAPI["OpenInsider\n(Insider Trades)"]
+    subgraph Providers ["External Data Providers"]
+        SimFinAPI["SimFin API<br/>(Fundamentals, Prices)"]
+        SEC_EDGAR["SEC EDGAR<br/>(13F Institutional Holdings)"]
+        OpenInsiderAPI["OpenInsider<br/>(Insider Trades)"]
     end
 
-    subgraph Shared Storage
+    subgraph Storage ["Shared Storage"]
         ExchangeDir[("Parquet Exchange Directory")]
     end
 
     %% Flow
-    Spring -- "Publishes Request" --> TopicReq
-    TopicReq -- "Consumes" --> Subscriber
+    Spring -->|"Publishes Request"| TopicReq
+    TopicReq -->|"Consumes"| Subscriber
     
-    Subscriber -- "Routes" --> SimFinSvc
-    Subscriber -- "Routes" --> OpenInsiderSvc
-    Subscriber -- "Routes" --> SECSvc
+    Subscriber -->|"Routes"| SimFinSvc
+    Subscriber -->|"Routes"| OpenInsiderSvc
+    Subscriber -->|"Routes"| SECSvc
     
-    SimFinSvc -- "Fetches" --> SimFinAPI
-    OpenInsiderSvc -- "Fetches" --> OpenInsiderAPI
-    SECSvc -- "Fetches" --> SEC_EDGAR
+    SimFinSvc -->|"Fetches"| SimFinAPI
+    OpenInsiderSvc -->|"Fetches"| OpenInsiderAPI
+    SECSvc -->|"Fetches"| SEC_EDGAR
     
     SimFinSvc --> ParquetWriter
     OpenInsiderSvc --> ParquetWriter
     SECSvc --> ParquetWriter
     
-    ParquetWriter -- "Writes Data" --> ExchangeDir
-    ParquetWriter -- "Publishes Event" --> TopicReady
-    SimFinSvc -- "Publishes Metadata" --> TopicMeta
+    ParquetWriter -->|"Writes Data"| ExchangeDir
+    ParquetWriter -->|"Publishes Event"| TopicReady
+    SimFinSvc -->|"Publishes Metadata"| TopicMeta
     
-    TopicReady -- "Consumes" --> Spring
-    ExchangeDir -- "Reads Data" --> Spring
+    TopicReady -->|"Consumes"| Spring
+    ExchangeDir -->|"Reads Data"| Spring
 ```
 
 ### Ingestion Flow Details
