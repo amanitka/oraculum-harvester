@@ -12,7 +12,7 @@ import logging
 import uuid
 from datetime import date
 
-from common.domain.data_file_ready import DataFileReadyEvent
+from common.domain.data_file_ready import DataFileReadyEvent, DataBatchCompleteEvent
 from common.requests.sec_13f import Fetch13FBulkRequest
 from harvester.providers.sec_13f_provider import Sec13FProvider
 from harvester.services.parquet_writer import write_to_parquet
@@ -51,7 +51,11 @@ class Sec13FService:
     # ------------------------------------------------------------------
 
     async def _publish_holdings(self, zf, period, filed, correlation_id, publishers) -> None:
-        """Write holdings in chunks and publish one event per chunk."""
+        """Write holdings in chunks and publish one DataFileReadyEvent per chunk.
+
+        After all parts are sent, publishes a DataBatchCompleteEvent so the Java
+        consumer knows it is safe to run sp_compute_sec_holding_delta.
+        """
         chunks      = list(self._provider.parse_holdings(zf, period, filed))
         total_parts = len(chunks)
         total_rows  = 0
@@ -61,7 +65,6 @@ class Sec13FService:
             return
 
         for part_num, chunk in enumerate(chunks):
-            is_final = (part_num == total_parts - 1)
             meta = await asyncio.to_thread(
                 write_to_parquet,
                 models=chunk,
@@ -76,18 +79,25 @@ class Sec13FService:
                 correlation_id=correlation_id,
                 file_checksum=meta["checksum"],
                 record_count=meta["count"],
-                is_final_part=is_final,
             )
             await publishers.data_file_ready.publish(
-                event, key=f"sec_13f_holding:{correlation_id}:{part_num}"
+                event, key=f"sec_13f_holding:{correlation_id}"
             )
             total_rows += meta["count"]
-            logger.info(
-                "Published sec_13f_holding part %d/%d (%d rows, final=%s)",
-                part_num + 1, total_parts, meta["count"], is_final,
-            )
+            logger.info("Published sec_13f_holding part %d/%d (%d rows)", part_num + 1, total_parts, meta["count"])
 
-        logger.info("Published %d total holding rows in %d parts", total_rows, total_parts)
+        # Signal that all parts are on the wire — no file data, just a completion marker.
+        await publishers.batch_complete.publish(
+            DataBatchCompleteEvent(
+                dataset="sec_13f_holding",
+                correlation_id=correlation_id,
+                total_parts=total_parts,
+                period_of_report=period,
+            ),
+            key=f"sec_13f_holding:{correlation_id}",
+        )
+        logger.info("Published batch_complete for sec_13f_holding (%d total rows, %d parts)", total_rows, total_parts)
+
 
     async def _publish_filers(self, zf, period, correlation_id, publishers) -> None:
         """Write filers to a single Parquet file and publish one event."""
@@ -111,7 +121,6 @@ class Sec13FService:
             correlation_id=correlation_id,
             file_checksum=meta["checksum"],
             record_count=meta["count"],
-            is_final_part=True,
         )
         await publishers.data_file_ready.publish(
             event, key=f"sec_13f_filer:{correlation_id}"

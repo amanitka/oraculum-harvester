@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -48,6 +48,25 @@ class DataFileReadyEvent(BaseModel):
     correlation_id: str
     file_checksum: str
     record_count: int
-    is_final_part: bool = True
     file_statuses: list[DataFileStatus] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class DataBatchCompleteEvent(BaseModel):
+    """Signal that all Parquet parts for a multi-part batch have been published.
+
+    Contains no file data — its sole purpose is to tell the consumer that
+    all DataFileReadyEvents for this correlation_id have been sent and it
+    is safe to run post-processing (e.g. stored procedures, promotions).
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    event_type: str = "oraculum.data_batch_complete"
+    dataset: DatasetType
+    correlation_id: str
+    total_parts: int
+    period_of_report: Optional[date] = None
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
