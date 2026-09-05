@@ -16,6 +16,11 @@ harvester:
   requestTopic: $ORACULUM_HARVESTER_KAFKA_TOPIC_HARVESTER_REQUEST|oraculum.harvester.request
   dataDirectory: $ORACULUM_HARVESTER_DATA_DIRECTORY|/app/data
   exchangeDirectory: $ORACULUM_HARVESTER_EXCHANGE_DIRECTORY|/app/exchange
+  defaultChunkSize: $ORACULUM_HARVESTER_DEFAULT_CHUNK_SIZE|1000000
+  tempCleanup:
+    enabled: $ORACULUM_HARVESTER_TEMP_CLEANUP_ENABLED|true
+    retentionDays: $ORACULUM_HARVESTER_TEMP_RETENTION_DAYS|1
+    intervalDays: $ORACULUM_HARVESTER_TEMP_CLEANUP_INTERVAL_DAYS|1
 
 openinsider:
   baseUrl: $ORACULUM_HARVESTER_OPENINSIDER_BASE_URL|"http://openinsider.com/screener"

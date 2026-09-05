@@ -31,8 +31,13 @@ class Config:
             env_file=str(ENV_PATH) if ENV_PATH.exists() else None,
         )
         self._source = source
+        self.harvester_default_chunk_size: int = self._positive_int(
+            source.get("harvester.defaultChunkSize", 1000000), "harvester.defaultChunkSize"
+        )
         self.simfin_api_key: str = source.get("simfin.apiKey")
-        self.simfin_chunk_size: int = self._positive_int(source.get("simfin.chunkSize", 500000), "simfin.chunkSize")
+        self.simfin_chunk_size: int = self._positive_int(
+            source.get("simfin.chunkSize", self.harvester_default_chunk_size), "simfin.chunkSize"
+        )
         self.simfin_refresh_days: int = self._positive_int(source.get("simfin.refreshDays", 1), "simfin.refreshDays")
         self.kafka_brokers: List[str] = self._parse_brokers(source.get("kafka.brokers"))
         self.harvester_consumer_group: str = source.get("harvester.consumerGroup")
@@ -53,6 +58,14 @@ class Config:
         parsed_exchange_path = Path(raw_exchange_path)
         self.harvester_exchange_directory: Path = parsed_exchange_path if parsed_exchange_path.is_absolute() else _ROOT_DIR / parsed_exchange_path
         self.harvester_exchange_directory.mkdir(parents=True, exist_ok=True)
+
+        self.harvester_temp_cleanup_enabled: bool = bool(source.get("harvester.tempCleanup.enabled", True))
+        self.harvester_temp_cleanup_retention_days: int = self._positive_int(
+            source.get("harvester.tempCleanup.retentionDays", 1), "harvester.tempCleanup.retentionDays"
+        )
+        self.harvester_temp_cleanup_interval_days: int = self._positive_int(
+            source.get("harvester.tempCleanup.intervalDays", 1), "harvester.tempCleanup.intervalDays"
+        )
 
         self.sec_user_agent: str = source.get(
             "sec.userAgent", "OraculumHarvester admin@oraculum-analytics.com"

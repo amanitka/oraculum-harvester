@@ -25,6 +25,37 @@ def compute_checksum(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
+def write_df_to_parquet(
+    df: pd.DataFrame,
+    dataset: str,
+    correlation_id: str,
+    market: str,
+    part: int = 0,
+) -> dict[str, Any]:
+    """Write a DataFrame directly to a Parquet file and return metadata."""
+    if df.empty:
+        return {"count": 0, "path": "", "checksum": ""}
+
+    target_dir = config.harvester_exchange_directory
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{correlation_id}_{market}_{dataset}_part-{part:03d}.parquet"
+    tmp_path = target_dir / f"{filename}.tmp"
+    final_path = target_dir / filename
+
+    df.to_parquet(tmp_path, index=False, engine="pyarrow")
+    checksum = compute_checksum(tmp_path)
+    os.rename(tmp_path, final_path)
+
+    count = len(df)
+    logger.debug("Wrote %d rows to %s", count, final_path)
+    return {
+        "count": count,
+        "path": filename,
+        "checksum": checksum,
+    }
+
+
 def write_to_parquet(
     models: List[BaseModel],
     dataset: str,

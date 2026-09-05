@@ -14,7 +14,7 @@ class Sec13FHolding(BaseModel):
     accession_number: str
     cik: str
     manager_name: str
-    period_of_report: date
+    report_period: date
     filing_date: date
     issuer_name: str
     class_title: str
