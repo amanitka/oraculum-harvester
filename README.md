@@ -15,6 +15,7 @@
   <img src="https://img.shields.io/badge/SEC-EDGAR%20API-003366?style=for-the-badge&logo=civicprivacy&logoColor=white" alt="SEC EDGAR" />
   <img src="https://img.shields.io/badge/Docker-Non--Root%20(10000)-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
   <img src="https://img.shields.io/badge/Code%20Style-Ruff-000000?style=for-the-badge&logo=ruff&logoColor=white" alt="Ruff" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Non--Commercial-blue?style=for-the-badge" alt="License: Non-Commercial" /></a>
 </p>
 
 ---
@@ -36,6 +37,7 @@
 - [Local Development & Execution](#local-development--execution)
 - [Container Deployment](#container-deployment)
 - [Code Quality & Testing](#code-quality--testing)
+- [License & Terms of Use](#license--terms-of-use)
 
 ---
 
@@ -409,6 +411,16 @@ uv run python -m py_compile harvester/app.py
 # Run test suite
 uv run pytest
 ```
+
+---
+
+## License & Terms of Use
+
+This project is licensed under the **Non-Commercial & Evaluation License**.
+- **Personal & Educational**: Free to view, clone, run, and experiment with for private, educational, or portfolio evaluation purposes.
+- **Commercial Restrictions**: Any commercial use, company deployment, SaaS hosting, or distribution requires prior written permission and an explicit commercial license.
+
+For commercial licensing or inquiries: **Luděk Pokorný** ([ballnazzar@gmail.com](mailto:ballnazzar@gmail.com) | [GitHub](https://github.com/amanitka)).
 
 ---
 
