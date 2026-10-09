@@ -70,10 +70,20 @@ class Config:
         self.sec_user_agent: str = source.get(
             "sec.userAgent", "OraculumHarvester admin@oraculum-analytics.com"
         )
-        self.sec_bulk_13f_base_url: str = source.get(
-            "sec.bulk13fBaseUrl",
-            "https://www.sec.gov/files/structureddata/data/form-13f-data-sets",
+        self.sec_bulk_13f_base_urls: list[str] = self._parse_string_list(
+            source.get("sec.bulk13fBaseUrls") or source.get("sec.bulk13fBaseUrl")
         )
+        self.sec_bulk_13f_base_url: str = self.sec_bulk_13f_base_urls[0] if self.sec_bulk_13f_base_urls else ""
+
+    @staticmethod
+    def _parse_string_list(value: object) -> list[str]:
+        if not value:
+            return []
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return []
 
     @staticmethod
     def _parse_brokers(value: str | list[str] | None) -> List[str]:

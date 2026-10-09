@@ -49,7 +49,7 @@ class Sec13FProvider:
     def __init__(self, chunk_size: int | None = None) -> None:
         self.chunk_size = chunk_size or config.harvester_default_chunk_size
         self._user_agent = config.sec_user_agent
-        self._bulk_base  = config.sec_bulk_13f_base_url
+        self._bulk_bases = config.sec_bulk_13f_base_urls
 
     @staticmethod
     def _build_candidate_filenames(year: int, quarter: int) -> list[str]:
@@ -66,35 +66,59 @@ class Sec13FProvider:
         candidates.append(f"{year}q{quarter}_13f.zip")
         return candidates
 
-    def download_to_file(self, year: int, quarter: int, dest_path: Path) -> Path:
-        """Stream-download the quarterly 13F bulk ZIP directly to a disk file."""
+    def download_to_file(self, year: int, quarter: int, dest_path: Path) -> Path | None:
+        """Stream-download the quarterly 13F bulk ZIP directly to a disk file.
+
+        Returns the destination Path on success, or None if the file is not yet available (e.g. 404).
+        """
         candidates = self._build_candidate_filenames(year, quarter)
         headers = {"User-Agent": self._user_agent}
 
         dest_path.parent.mkdir(parents=True, exist_ok=True)
         last_resp = None
 
-        for filename in candidates:
-            url = f"{self._bulk_base}/{filename}"
-            logger.info("Attempting 13F bulk ZIP download from %s", url)
-            try:
-                with requests.get(url, headers=headers, timeout=300, stream=True) as resp:
-                    if resp.status_code == 200:
-                        total_bytes = 0
-                        with open(dest_path, "wb") as f:
-                            for chunk in resp.iter_content(chunk_size=1024 * 1024):
-                                if chunk:
-                                    f.write(chunk)
-                                    total_bytes += len(chunk)
-                        logger.info("Successfully downloaded %s (%d MB) to %s", filename, total_bytes // 1_048_576, dest_path)
-                        return dest_path
-                    last_resp = resp
-            except requests.RequestException as e:
-                logger.warning("Failed downloading %s: %s", url, e)
+        attempted_urls: list[str] = []
+
+        for base in self._bulk_bases:
+            for filename in candidates:
+                url = f"{base.rstrip('/')}/{filename}"
+                attempted_urls.append(url)
+                logger.info("Attempting 13F bulk ZIP download from %s", url)
+                try:
+                    with requests.get(url, headers=headers, timeout=300, stream=True) as resp:
+                        if resp.status_code == 200:
+                            total_bytes = 0
+                            with open(dest_path, "wb") as f:
+                                for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                                    if chunk:
+                                        f.write(chunk)
+                                        total_bytes += len(chunk)
+                            logger.info("Successfully downloaded %s (%d MB) to %s", filename, total_bytes // 1_048_576, dest_path)
+                            return dest_path
+                        last_resp = resp
+                except requests.RequestException as e:
+                    logger.warning("Failed downloading %s: %s", url, e)
+
+        if last_resp is not None and last_resp.status_code == 404:
+            logger.info(
+                "SEC 13F bulk dataset for %dQ%d is not yet available on SEC servers (404 Not Found at %s, checked URLs: %s).",
+                year,
+                quarter,
+                last_resp.url,
+                attempted_urls,
+            )
+            return None
 
         if last_resp is not None:
             last_resp.raise_for_status()
-        raise FileNotFoundError(f"Could not find 13F bulk ZIP for {year}Q{quarter}")
+
+        logger.info(
+            "Could not find SEC 13F bulk ZIP for %dQ%d across configured URLs: %s",
+            year,
+            quarter,
+            attempted_urls,
+        )
+        return None
 
     def stream_holdings_chunks(
         self, zf: zipfile.ZipFile, period_of_report: date, filing_date: date

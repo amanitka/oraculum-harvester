@@ -32,5 +32,7 @@ sec:
   # Shared User-Agent for all SEC EDGAR requests (edgartools + 13F bulk HTTP).
   # SEC requires: "CompanyName AdminContact@domain.com" — max 10 req/s.
   userAgent: $ORACULUM_HARVESTER_SEC_USER_AGENT|"OraculumHarvester admin@oraculum-analytics.com"
-  bulk13fBaseUrl: "https://www.sec.gov/files/structureddata/data/form-13f-data-sets"
+  bulk13fBaseUrls:
+    - "https://www.sec.gov/files/datastandardsinnovation/data/form-13f-data-sets"
+    - "https://www.sec.gov/files/structureddata/data/form-13f-data-sets"
 

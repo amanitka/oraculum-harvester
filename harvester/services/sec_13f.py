@@ -48,7 +48,10 @@ class Sec13FService:
 
         try:
             logger.info("Downloading bulk ZIP to %s...", tmp_zip)
-            await asyncio.to_thread(self._provider.download_to_file, year, quarter, tmp_zip)
+            downloaded = await asyncio.to_thread(self._provider.download_to_file, year, quarter, tmp_zip)
+            if downloaded is None or not downloaded.exists():
+                logger.info("SEC 13F bulk dataset for %dQ%d is not yet available on any configured URL. Skipping processing.", year, quarter)
+                return
 
             with zipfile.ZipFile(tmp_zip) as zf:
                 logger.info("Processing institutional filers metadata...")
